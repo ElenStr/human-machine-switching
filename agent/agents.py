@@ -12,42 +12,6 @@ from environments.env import Environment
 from copy import copy
 
 
-# TODO make sure policies sums to one!
-
-    # class ConfidenceSet:
-    #     def __init__(self, shape, delta, true_policy=None):
-    #         self.history = np.zeros(shape=shape)
-    #         self.true_policy = true_policy
-    #         self.shape = shape
-    #         self.beta = np.zeros(shape=self.shape[0: len(self.shape) - 1]) if true_policy is not None else None
-    #         self.empirical = self.true_policy
-    #         self.delta = delta
-
-    #     def update(self, tup):
-    #         self.history[tup] += 1
-
-    #     def get_empirical(self):
-    #         if self.true_policy is not None:
-    #             return self.empirical
-    #         arr = np.copy(self.history)
-    #         ax = len(self.shape) - 1
-    #         arr[arr.sum(axis=ax) == 0] = 1
-    #         self.empirical = arr / np.expand_dims(arr.sum(axis=ax), axis=ax)
-    #         return self.empirical
-
-    #     def get_beta(self, t_k):
-    #         if self.true_policy is not None:
-    #             return self.beta
-    #         ax = len(self.shape) - 1
-    #         ret = self.history.sum(axis=ax)
-    #         ret[ret == 0] = 1
-    #         w = 1
-    #         for j in range(ax):
-    #             w *= self.shape[j]
-    #         m = self.shape[ax]
-    #         self.beta = np.sqrt(2 * (7 * math.log(t_k) + math.log(w/self.delta) + math.log(2) * (m + 1)) / ret)
-    #         return self.beta
-
 
 class Agent:
     """
