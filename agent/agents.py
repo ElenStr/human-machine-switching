@@ -34,6 +34,7 @@ class MachineDriverAgent(Agent):
         """Initialize network and metrics"""
         super().__init__()
 
+
     def update_obs(self, *args):
         """Return input batch  for training"""
         pass
@@ -71,7 +72,7 @@ class NoisyDriverAgent(Agent):
     def take_action(self, curr_state):
         '''
         current state in form of  ['road', 'no-car','car','road','car', ...]
-        human considers only next row no the others
+        human considers only next row, not the others
         ''' 
           
         noisy_next_cell_costs = [self.type_costs[nxt_cell_type] + random.gauss(0,self.noise_sd) + random.gauss(0, self.noise_sw) if nxt_cell_type!='wall' else np.inf for nxt_cell_type in curr_state[2:5]]
