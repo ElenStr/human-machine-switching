@@ -1,14 +1,14 @@
 """
 Implementation of the human and machine policies in the paper
 """
-import datetime
 import random
-from numba import njit
 import numpy as np
 import math
-from typing import Callable
+import torch
 
 from environments.env import Environment
+from environments.utils_env import state2features
+from networks.networks import ActorNet
 from copy import copy
 
 
@@ -30,22 +30,68 @@ class Agent:
         """Return an action based on the policy"""
 
 class MachineDriverAgent(Agent):
-    def __init__(self):
-        """Initialize network and metrics"""
-        super().__init__()
+    def __init__(self, n_state_features, n_actions, optimizer,entropy_weight=0.01):
+        """Initialize network and hyperparameters"""
+        super(MachineDriverAgent, self).__init__()
+        self.network = ActorNet(n_state_features, n_actions)
+        self.optimizer = optimizer(self.network.parameters)
+        self.entropy_weight = entropy_weight
 
 
     def update_obs(self, *args):
         """Return input batch  for training"""
         pass
 
-    def update_policy(self, *args):
-        """Implement train step """
-        pass 
+    def update_policy(self, weighting, delta, current_policy, action):
+        """
+        Implement train step 
 
-    def take_action(self, *args):
-        """Return an action based on the policy"""
-        pass 
+        Parameters
+        ----------
+        weighting: torch.LongTensor
+            For off-policy weighting = M_t * rho_t, for on-policy weighting = switch(s) 
+
+        delta: torch.LongTensor
+            For off-policy delta = TD_error, for on-policy delta = v(s)
+
+        current_policy: Categorical
+            The current action policy distribution
+        
+        action: int
+            The action taken
+        """
+        log_pi =  current_policy.log_prob(torch.as_tensor(action))
+        # TODO: entropy = entropy.mean() for batch update 
+        entropy = current_policy.entropy()
+        policy_loss = -weighting * delta * log_pi - self.entropy_weight*entropy
+        # TODO: policy_loss = policy_loss.mean() for batch update
+
+        self.optimizer.zero_grad()
+        policy_loss.backward()
+        self.optimizer.step()
+
+    def take_action(self, curr_state):
+        """
+        Return an action based on the policy and the policy 
+
+        Parameters
+        ----------
+        curr_state: list of strings
+            Current state vector 
+        
+        Returns
+        -------
+        action: int
+            The action to be taken
+        policy: Categorical
+            The action policy distribution given form the network
+        """
+        state_feature_vector  = state2features(curr_state)
+        actions_probs = self.network(state_feature_vector)
+        policy = torch.distributions.Categorical(probs=actions_probs)
+        action = policy.sample().item()
+        return action, policy  
+
 
 
 class NoisyDriverAgent(Agent):
@@ -63,7 +109,7 @@ class NoisyDriverAgent(Agent):
         noise_sw : float
             Standard deviation of the Gaussian noise beacuse of switching from Machine to Human
         """
-        super().__init__()
+        super(NoisyDriverAgent, self).__init__()
         self.noise_sd = noise_sd
         self.noise_sw = noise_sw
         self.type_costs = env.type_costs

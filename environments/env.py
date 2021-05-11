@@ -35,14 +35,19 @@ class GridWorld:
         ----------
         height : int
             Height of the grid env
+
         width : int
             Width of the grid env
+
         cell_types : dict
             Type of each grid cell with coordinate (x, y), i.e., {(x, y): type}.
+
         traffic_levels: list
             Traffic level of each row
+
         type_costs: dict
             Cost of each cell type
+            
         depth: int
             The number of next rows in the state vector
         """

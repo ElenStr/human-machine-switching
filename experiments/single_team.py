@@ -8,7 +8,7 @@ from agent.agents import NoisyDriverAgent, FixedAgent, ConfidenceSet, CopyAgent
 
 from environments.env import Environment, GridWorld
 from environments.episodic_mdp import EpisodicMDP
-from environments.make_envs import HEIGHT, WIDTH, make_state_extractor, FeatureStateHandler
+# from environments.utils_env import HEIGHT, WIDTH
 
 from definitions import ROOT_DIR
 
