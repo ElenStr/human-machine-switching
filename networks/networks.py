@@ -12,6 +12,7 @@ class Network(nn.Module):
 
     def forward(self, features, activation):
         """ features is the featurized input vector"""
+        # TODO: onehot encoding for features or mapping to real values
         input = tensor(features)
         output = self.fc_layer(F.relu(self.inp_layer(input)))
         return  activation(output)
@@ -21,6 +22,16 @@ class Network(nn.Module):
 
 class ActorNet(Network):
     def __init__(self, n_features: int , n_actions: int ):
+        """ 
+        Initialization of actor architecture
+
+        Parameters
+        ----------
+        n_features: int
+            Dimension of input state feature vector
+        n_actions: int
+            Number of actions
+        """
         super(ActorNet, self).__init__(n_features, n_actions)
     
     def forward(self, features):

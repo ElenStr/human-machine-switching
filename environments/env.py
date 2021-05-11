@@ -115,11 +115,26 @@ class GridWorld:
 
         """
         x, y = self.current_coord
-        state = [self.cell_types[x,y]]
-        for i in range(1,depth+1):
-           state.append(self.traffic_levels[y+i])
-           for r in range(3):
-               state.append(self.cell_types[r, y+i])
+        state = [self.cell_types[x,y]]       
+        nxt = 1
+        # Add wall type if current cell is leftmost (rightmost)
+        if x==0:
+            nxt = 2
+            state.append(self.traffic_levels[y+1])
+            state.append('wall')
+            for r in range(2):
+                state.append(self.cell_types[r, y+i])
+        elif x==self.width - 1:
+            nxt = 2
+            state.append(self.traffic_levels[y+1])
+            for r in range(1,3):
+                state.append(self.cell_types[r, y+i])
+            state.append('wall')
+        
+        for i in range(nxt,depth+1):
+            state.append(self.traffic_levels[y+i])            
+            for r in range(3):
+                state.append(self.cell_types[r, y+i])
         return state
 
     def step(self, action):
