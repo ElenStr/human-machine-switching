@@ -30,12 +30,13 @@ class Agent:
         """Return an action based on the policy"""
 
 class MachineDriverAgent(Agent):
-    def __init__(self, n_state_features, n_actions, optimizer,entropy_weight=0.01):
+    def __init__(self,env: Environment, n_state_features, n_actions, optimizer,entropy_weight=0.01):
         """Initialize network and hyperparameters"""
         super(MachineDriverAgent, self).__init__()
         self.network = ActorNet(n_state_features, n_actions)
-        self.optimizer = optimizer(self.network.parameters)
+        self.optimizer = optimizer(self.network.parameters())
         self.entropy_weight = entropy_weight
+        self.env = env
 
 
     def update_obs(self, *args):
@@ -86,7 +87,8 @@ class MachineDriverAgent(Agent):
         policy: Categorical
             The action policy distribution given form the network
         """
-        state_feature_vector  = state2features(curr_state)
+        
+        state_feature_vector  = state2features(curr_state, self.env)
         actions_probs = self.network(state_feature_vector)
         policy = torch.distributions.Categorical(probs=actions_probs)
         action = policy.sample().item()
@@ -122,10 +124,14 @@ class NoisyDriverAgent(Agent):
         ''' 
           
         noisy_next_cell_costs = [self.type_costs[nxt_cell_type] + random.gauss(0,self.noise_sd) + random.gauss(0, self.noise_sw) if nxt_cell_type!='wall' else np.inf for nxt_cell_type in curr_state[2:5]]
-        min_estimated_cost = np.min(noisy_next_cell_costs)
+        # if end of episode is reached
+        if not noisy_next_cell_costs:
+            return random.randint(0,2)
+        min_estimated_cost = np.min(noisy_next_cell_costs) 
         # ties are broken randomly
-        possible_actions = np.argwhere(noisy_next_cell_costs == min_estimated_cost)
-        n_possible_actions = possible_actions.shape[0]
+        possible_actions = np.argwhere(noisy_next_cell_costs == min_estimated_cost).flatten()
+        n_possible_actions = possible_actions.size
+        
         action = random.choices(possible_actions, [1/n_possible_actions]*n_possible_actions)[0]
         
         return action

@@ -1,4 +1,5 @@
-from torch import nn, tensor
+import torch
+from torch import nn, as_tensor
 import torch.nn.functional as F
 
 class Network(nn.Module):
@@ -7,13 +8,18 @@ class Network(nn.Module):
         super(Network, self).__init__()
         #TODO hidden = f(dim_in)
         hidden = 64
+        self.input_dim = dim_in
         self.inp_layer = nn.Linear(dim_in, hidden)
         self.fc_layer = nn.Linear(hidden, dim_out)
 
     def forward(self, features, activation):
-        """ features is the featurized input vector"""
-        # TODO: onehot encoding for features or mapping to real values
-        input = tensor(features)
+        """ features is the featurized input vector"""         
+        input = as_tensor(features, dtype=torch.float)
+        # Padd input when approaching end of episode
+        features_size = len(features)
+        if features_size < self.input_dim:
+            padd = torch.ones(self.input_dim-features_size, dtype=torch.float)
+            input = torch.cat((input,padd) ) 
         output = self.fc_layer(F.relu(self.inp_layer(input)))
         return  activation(output)
     

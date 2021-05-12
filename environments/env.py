@@ -47,7 +47,7 @@ class GridWorld:
 
         type_costs: dict
             Cost of each cell type
-            
+
         depth: int
             The number of next rows in the state vector
         """
@@ -123,20 +123,22 @@ class GridWorld:
         state = [self.cell_types[x,y]]       
         nxt = 1
         # Add wall type if current cell is leftmost (rightmost)
-        if x==0:
+        # if not in last row
+        if x==0 and y<self.height-1:
             nxt = 2
             state.append(self.traffic_levels[y+1])
             state.append('wall')
             for r in range(2):
-                state.append(self.cell_types[r, y+i])
-        elif x==self.width - 1:
+                state.append(self.cell_types[r, y+1])
+        elif x==self.width - 1 and y<self.height-1 :
             nxt = 2
             state.append(self.traffic_levels[y+1])
             for r in range(1,3):
-                state.append(self.cell_types[r, y+i])
+                state.append(self.cell_types[r, y+1])
             state.append('wall')
-        
-        for i in range(nxt,depth+1):
+        # state includes min(depth, remaining rows ahead )
+        upper_bound = min(self.depth, self.height-y -1) +1
+        for i in range(nxt,upper_bound):
             state.append(self.traffic_levels[y+i])            
             for r in range(3):
                 state.append(self.cell_types[r, y+i])
@@ -218,4 +220,4 @@ class Environment:
         middle_width = width // 2
         cells[middle_width, 0] = 'road'
         grid_world = GridWorld(width, height, cells, traffics, self.type_costs)
-        return grid_world
+        return grid_world    
