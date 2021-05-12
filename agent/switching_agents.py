@@ -49,7 +49,7 @@ class FixedSwitchingMachine(Agent):
             For off-policy weighting = F_t * rho_t, for on-policy weighting = 1
 
         td_error: torch.LongTensor
-            TD_error c'(s,a) + V(s+1)  - V(s)
+            TD_error c + V(s+1)  - V(s)
         """
         # weighting and c'(s,a) + V(s+1) must have been computed with torch.no_grad()
         # maybe weighting needs clamp(0,1)!!!
@@ -93,7 +93,7 @@ class SwitchingAgent(Agent):
             For off-policy weighting = F_t * rho_t, for on-policy weighting = 1
 
         td_error: torch.LongTensor
-            TD_error c'(s,a) + switch(s+1)*Q(s+1, M) + (1-switch(s+1))*Q(s+1, H)
+            TD_error c + switch(s+1)*Q(s+1, M) + (1-switch(s+1))*Q(s+1, H)
             - (switch(s)*Q(s, M) + (1-switch(s))*Q(s, H))
         """
         # weighting and c'(s,a) + V(s+1) must have been computed with torch.no_grad()

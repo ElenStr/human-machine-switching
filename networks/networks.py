@@ -47,6 +47,7 @@ class CriticNet(Network):
     """ Standard critic """
     def __init__(self, n_features: int ):
         super(CriticNet, self).__init__(n_features, 1)
+        self.needs_agent_feature = False
     
     def forward(self, features):
         return super().forward(features, lambda inp : inp)
@@ -72,6 +73,7 @@ class OptionCriticNet(Network):
         super(OptionCriticNet, self).__init__(n_features, 1)
         self.c_M = c_c_M
         self.c_H = c_c_H
+        self.needs_agent_feature = True
     
     def forward(self, features):
         """

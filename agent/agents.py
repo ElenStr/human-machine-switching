@@ -30,13 +30,14 @@ class Agent:
         """Return an action based on the policy"""
 
 class MachineDriverAgent(Agent):
-    def __init__(self,env: Environment, n_state_features, n_actions, optimizer,entropy_weight=0.01):
+    def __init__(self,env: Environment, n_state_features, n_actions, optimizer, c_M=0., entropy_weight=0.01):
         """Initialize network and hyperparameters"""
         super(MachineDriverAgent, self).__init__()
         self.network = ActorNet(n_state_features, n_actions)
         self.optimizer = optimizer(self.network.parameters())
         self.entropy_weight = entropy_weight
         self.env = env
+        self.control_cost = c_M
 
 
     def update_obs(self, *args):
@@ -99,7 +100,7 @@ class MachineDriverAgent(Agent):
 
 
 class NoisyDriverAgent(Agent):
-    def __init__(self, env: Environment, noise_sd: float, noise_sw=.0):
+    def __init__(self, env: Environment, noise_sd: float, noise_sw=.0, c_H=0.):
         """
         A noisy driver, which chooses the cell with the lowest noisy estimated cost.
 
@@ -117,6 +118,7 @@ class NoisyDriverAgent(Agent):
         self.noise_sd = noise_sd
         self.noise_sw = noise_sw
         self.type_costs = env.type_costs
+        self.control_cost = c_H
 
 
     def take_action(self, curr_state):
@@ -136,7 +138,7 @@ class NoisyDriverAgent(Agent):
         
         action = random.choices(possible_actions, [1/n_possible_actions]*n_possible_actions)[0]
         
-        return action
+        return action,
 
 
 
