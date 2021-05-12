@@ -80,6 +80,7 @@ class OptionCriticNet(Network):
         features: int array-like
             The featurized state vector with appended the agent (Machine or Human) feature value            
         """
+        # TODO: change (if features[-1]) for 1-hot encoding
         agent_control_cost = self.c_M if features[-1] else self.c_H
         return super().forward(features, lambda inp : inp+agent_control_cost)
 

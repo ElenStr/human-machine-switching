@@ -43,6 +43,7 @@ class MachineDriverAgent(Agent):
         """Return input batch  for training"""
         pass
 
+# Need to use njit decorator?
     def update_policy(self, weighting, delta, current_policy, action):
         """
         Implement train step 
@@ -61,6 +62,7 @@ class MachineDriverAgent(Agent):
         action: int
             The action taken
         """
+        # weighting and delta must have been computed with torch.no_grad()
         log_pi =  current_policy.log_prob(torch.as_tensor(action))
         # TODO: entropy = entropy.mean() for batch update 
         entropy = current_policy.entropy()
@@ -73,7 +75,7 @@ class MachineDriverAgent(Agent):
 
     def take_action(self, curr_state):
         """
-        Return an action based on the policy and the policy 
+        Return an action given the current based on the policy 
 
         Parameters
         ----------
@@ -87,7 +89,7 @@ class MachineDriverAgent(Agent):
         policy: Categorical
             The action policy distribution given form the network
         """
-        
+        # TODO: make machine worse than human+machine e.g. same feature value for road-stone
         state_feature_vector  = state2features(curr_state, self.env)
         actions_probs = self.network(state_feature_vector)
         policy = torch.distributions.Categorical(probs=actions_probs)
