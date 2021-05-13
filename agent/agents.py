@@ -5,6 +5,7 @@ import random
 import numpy as np
 import math
 import torch
+from collections import defaultdict
 
 from environments.env import Environment
 from environments.utils_env import state2features
@@ -30,14 +31,14 @@ class Agent:
         """Return an action based on the policy"""
 
 class MachineDriverAgent(Agent):
-    def __init__(self,env: Environment, n_state_features, n_actions, optimizer, c_M=0., entropy_weight=0.01):
+    def __init__(self, n_state_features, n_actions, optimizer, c_M=0., entropy_weight=0.01):
         """Initialize network and hyperparameters"""
         super(MachineDriverAgent, self).__init__()
         self.network = ActorNet(n_state_features, n_actions)
         self.optimizer = optimizer(self.network.parameters())
         self.entropy_weight = entropy_weight
-        self.env = env
         self.control_cost = c_M
+        self.trainable = True
 
 
     def update_obs(self, *args):
@@ -67,7 +68,7 @@ class MachineDriverAgent(Agent):
         log_pi =  current_policy.log_prob(torch.as_tensor(action))
         # TODO: entropy = entropy.mean() for batch update 
         entropy = current_policy.entropy()
-        policy_loss = -weighting * delta * log_pi - self.entropy_weight*entropy
+        policy_loss = weighting * delta * log_pi + self.entropy_weight*entropy
         # TODO: policy_loss = policy_loss.mean() for batch update
 
         self.optimizer.zero_grad()
@@ -91,7 +92,7 @@ class MachineDriverAgent(Agent):
             The action policy distribution given form the network
         """
         # TODO: make machine worse than human+machine e.g. same feature value for road-stone
-        state_feature_vector  = state2features(curr_state, self.env)
+        state_feature_vector  = state2features(curr_state)
         actions_probs = self.network(state_feature_vector)
         policy = torch.distributions.Categorical(probs=actions_probs)
         action = policy.sample().item()
@@ -119,15 +120,31 @@ class NoisyDriverAgent(Agent):
         self.noise_sw = noise_sw
         self.type_costs = env.type_costs
         self.control_cost = c_H
+        self.trainable = False
+        self.policy_approximation = defaultdict(lambda: [0]*3)
+
+    def update_policy(self, state, action):
+        """Update policy approximation, needed for the off policy stage"""
+        # The human action in reality depends only on next row
+        human_obs = state[2:6] 
+        self.policy_approximation[human_obs][action]+=1
+            
+    def get_policy_approximation(self, state, action):
+        """ The approximated action policy distribution given the state """
+        human_obs = state[2:6] 
+        total_state_visit = sum(self.policy_approximation[human_obs])
+        p_human_a_s = self.policy_approximation[human_obs][action] / total_state_visit
+        return p_human_a_s
 
 
-    def take_action(self, curr_state):
+    def take_action(self, curr_state, switch=False):
         '''
         current state in form of  ['road', 'no-car','car','road','car', ...]
         human considers only next row, not the others
         ''' 
-          
-        noisy_next_cell_costs = [self.type_costs[nxt_cell_type] + random.gauss(0,self.noise_sd) + random.gauss(0, self.noise_sw) if nxt_cell_type!='wall' else np.inf for nxt_cell_type in curr_state[2:5]]
+        
+        switch_noise = self.noise_sw if switch else 0.  
+        noisy_next_cell_costs = [self.type_costs[nxt_cell_type] + random.gauss(0,self.noise_sd) + random.gauss(0, switch_noise) if nxt_cell_type!='wall' else np.inf for nxt_cell_type in curr_state[2:5]]
         # if end of episode is reached
         if not noisy_next_cell_costs:
             return random.randint(0,2)
@@ -137,8 +154,7 @@ class NoisyDriverAgent(Agent):
         n_possible_actions = possible_actions.size
         
         action = random.choices(possible_actions, [1/n_possible_actions]*n_possible_actions)[0]
-        
-        return action,
+        return action
 
 
 

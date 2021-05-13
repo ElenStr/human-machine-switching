@@ -5,22 +5,17 @@ Environment help functions.
 import numpy as np
 from copy import copy
 import math
-from environments.env import CELL_TYPES, TRAFFIC_LEVELS, Environment
+from environments.env import CELL_TYPES, TRAFFIC_LEVELS
 # default width and height
-WIDTH, HEIGHT = 3, 10
-# default max episode length
-EP_L = HEIGHT
+WIDTH = 3
 
 
-def state2features(state, env: Environment, real_v=True):
+def state2features(state, real_v=True):
     """
     Parameters
     ----------
     state: list of strings
         Current cell type and traffic factor and cell types of next rows 
-
-    env: Environment
-        Current environment
 
     real_v: bool
         Return features as real values
@@ -46,6 +41,6 @@ def state2features(state, env: Environment, real_v=True):
             features.append(np.argwhere(cell_t == state[i])[0][0])
             if real_v:
                 features[-1]= (features[-1] + 1.) / 10 *2
-    print(features)
+    # print(features)
     return features
 

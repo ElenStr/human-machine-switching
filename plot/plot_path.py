@@ -73,7 +73,7 @@ class PlotPath:
         colors = []
         widths = []
         x_ratio = 0.5
-        y_ratio = self.width / self.height
+        y_ratio = (self.height//10 )* self.width / self.height
         for line_tuple, count in self.lines.items():
             
             line = [((line_tuple[0] + 0.5) * x_ratio, (line_tuple[1] + 0.5) * y_ratio),

@@ -19,6 +19,7 @@ class FixedSwitchingHuman(Agent):
     """
     def __init__(self):
         super(FixedSwitchingHuman, self).__init__()
+        self.trainable = False
         
     def take_action(self, state):
         return 0
@@ -32,6 +33,7 @@ class FixedSwitchingMachine(Agent):
         super(FixedSwitchingMachine, self).__init__()
         self.network = CriticNet(n_state_features)
         self.optimizer = optimizer(self.network.parameters())
+        self.trainable = True
 
 
     def update_obs(self, *args):
@@ -68,14 +70,14 @@ class SwitchingAgent(Agent):
     """
     Switching policy chooses always machine
     """
-    def __init__(self, env: Environment, n_state_features, optimizer, c_M, c_H, eps=.01):
+    def __init__(self, n_state_features, optimizer, c_M, c_H, eps=.01):
         """Initialize network and hyperparameters"""
         super(SwitchingAgent, self).__init__()
         # TODO: change  n_state_features+1 for 1-hot encoding  
         self.network = OptionCriticNet(n_state_features+1,c_M,c_H)
         self.optimizer = optimizer(self.network.parameters())
         self.epsilon = eps
-        self.env = env
+        self.trainable = True
 
 
     def update_obs(self, *args):
@@ -119,7 +121,7 @@ class SwitchingAgent(Agent):
         switch: int
             The switching decision
         """
-        state_feature_vector  = state2features(curr_state, self.env)
+        state_feature_vector  = state2features(curr_state)
         # TODO: change human/machine feauture value for 1-hot encoding
          
         human_option_value = self.network(state_feature_vector + [1.]).detach().item()
