@@ -1,11 +1,12 @@
 import random
 import torch 
-from collections import deque
 import numpy as np
 
+
 from agent.agents import Agent
-from environments.env import GridWorld
-from environments.utils_env import state2features
+from agent.switching_agents import FixedSwitchingHuman
+from environments.env import GridWorld, Environment, TYPE_COSTS
+from environments.utils_env import state2features, feature2onehot
 from plot.plot_path import HUMAN_COLOR, MACHINE_COLOR, PlotPath
  
 
@@ -40,7 +41,7 @@ def learn_evaluate(switching_agent: Agent, acting_agents, env: GridWorld,is_lear
     total_costs = 0
     count = 0
     if ret_trajectory:
-        trajectory = deque()
+        trajectory = []
 
 
     for i in range(n_try):
@@ -54,29 +55,33 @@ def learn_evaluate(switching_agent: Agent, acting_agents, env: GridWorld,is_lear
 
             d_t = switching_agent.take_action(current_state)
             option = acting_agents[d_t] 
-            if not dt:  
+            if not d_t:  
                action = option.take_action(current_state, d_tminus1)
             else:
                 action, policy = option.take_action(current_state)
+                # record here human alternative
+                human_only_action = acting_agents[0].take_action(current_state)
+                human_only_dst = env.next_cell(human_only_action, move=False)[0]
             
             next_state, cost, finished = env.step(action)
             dst = env.current_coord
 
             c_tplus1 = cost + option.control_cost
             if ret_trajectory:
+                acting_agents[0].update_policy(current_state,action)
                 trajectory.append((current_state, action, next_state, cost))
-            if is_learn:
+            if is_learn and not finished:
                 if switching_agent.trainable:
-                    next_features = state2features(next_state) 
+                    next_features = state2features(next_state, switching_agent.n_state_features) 
                     with torch.no_grad():
                         d_tplus1 = switching_agent.take_action(next_state)
                         if switching_agent.network.needs_agent_feature :
-                            next_features.append(d_tplus1 + 1.)
+                            next_features.extend(feature2onehot(d_tplus1,2))
                         v_tplus1 = switching_agent.network(next_features)
 
-                    features = state2features(current_state)
+                    features = state2features(current_state, switching_agent.n_state_features)
                     if switching_agent.network.needs_agent_feature :
-                        features.append(d_t + 1.)
+                        features.extend(feature2onehot(d_t,2))
                     v_t = switching_agent.network(features)
                     
                     td_error = c_tplus1 + v_tplus1 - v_t
@@ -92,11 +97,15 @@ def learn_evaluate(switching_agent: Agent, acting_agents, env: GridWorld,is_lear
             if plt_path is not None and not finished:
                 clr = MACHINE_COLOR if d_t else HUMAN_COLOR
                 plt_path.add_line(src, dst, clr)
+                # add human != dummy for machine only
+                if d_t:
+                    plt_path.add_line(src, human_only_dst, HUMAN_COLOR)
 
     if ret_trajectory:
         return trajectory
 
     return total_costs / count
+
 
 def learn_off_policy(switching_agent: Agent, acting_agents, trajectory , n_try=1, plt_path=None):
     """
@@ -110,7 +119,7 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory , n_try=1
     acting_agents:  list of Agent
         The actings agents (always contains 2)
 
-    trajectory: deque
+    trajectory: list
         The trajectory induced by the behavior policy   
 
     Returns
@@ -126,33 +135,35 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory , n_try=1
         count += 1
         M_t = 0
         F_t = 0
-        while trajectory :
-            (current_state, action, next_state, cost) = trajectory.popleft()            
+        for t in trajectory:
+            (current_state, action, next_state, cost) = t            
 
             d_t = switching_agent.take_action(current_state)
             option = acting_agents[d_t]           
             
-
+            
             c_tplus1 = cost + option.control_cost
             
             if switching_agent.trainable:
-                next_features = state2features(next_state) 
+                next_features = state2features(next_state, switching_agent.n_state_features) 
                 with torch.no_grad():
                     d_tplus1 = switching_agent.take_action(next_state)
-                    if switching_agent.network.needs_agent_feature :
-                        next_features.append(d_tplus1 + 1.)
+                    if switching_agent.network.needs_agent_feature :                        
+                        next_features.extend(feature2onehot(d_tplus1,2))
                     v_tplus1 = switching_agent.network(next_features)
 
-                features = state2features(current_state)
+                features = state2features(current_state, switching_agent.n_state_features)
                 if switching_agent.network.needs_agent_feature :
-                    features.append(d_t + 1.)
+                    features.extend(feature2onehot(d_t,2))
                 v_t = switching_agent.network(features)
                 
                 td_error = c_tplus1 + v_tplus1 - v_t
+
                 mu_t = acting_agents[0].get_policy_approximation(current_state, action)
                 
                 policy = acting_agents[1].take_action(next_state)[1]
-                machine_pi_t = policy.detach().probs[action].item()
+                with torch.no_grad():
+                    machine_pi_t = policy.probs[action].item()
                 rho = machine_pi_t / mu_t
                 
                 var_pi_t = machine_pi_t if d_t else mu_t
@@ -162,19 +173,52 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory , n_try=1
                 emphatic_weighting  = rho * F_t              
                 switching_agent.update_policy(emphatic_weighting, td_error)
         
-            if acting_agents[1].trainable:
+            if acting_agents[1].trainable and d_t:
                 delta = cost + v_tplus1 - v_t.detach()
                 M_t = d_t + var_rho*M_t
                 emphatic_weighting = rho * M_t
-                option.update_policy(emphatic_weighting, delta, policy, action)
+                acting_agents[1].update_policy(emphatic_weighting, delta, policy, action)
 
             
-            total_costs += c_tplus1            
-
-
-    return total_costs / count
+            
 
     
 
+def gather_human_trajectories(human: Agent, env_gen: Environment, n_episodes: int,**env_params):
+    """ 
+    Return trajectories induced by human acting alone
+
+    Parameters
+    ----------
+    human: Agent
+        The human agent
+
+    env_gen: Environment
+        The gridworld generator
+
+    n_episodes: int
+        The number of episodes
+
+    env_params: dict of ('parameter_name', parameter_value)
+        The gridworld parameters
+
+    Returns
+    -------
+    trajectories: list of trajectory
+        The list of the gathered trajectories
+
+    """
+    # width, height, init_traffic = env_params['width'], env_params['height'], env_params['init_traffic']
+    trajectories = []
+    fixed_switch = FixedSwitchingHuman()
+    
+    for ep in range(n_episodes):
+        env = env_gen.generate_grid_world(**env_params)
+        traj = learn_evaluate(fixed_switch, [human], env, False, True)
+        trajectories.append(traj[:-1])
+    print(ep)
+    return trajectories
 
 
+
+    

@@ -1,30 +1,33 @@
 import torch
 from torch import nn, as_tensor
-import torch.nn.functional as F
+from torch.nn import functional as F 
+import numpy as np
+
+def initialize_layer(layer, w_scale=1.):
+    nn.init.orthogonal_(layer.weight.data)
+    layer.weight.data.mul_(w_scale)
+    nn.init.constant_(layer.bias.data, 0)
+    return layer
 
 class Network(nn.Module):
     """ 1-layer architecture """
     def __init__(self, dim_in: int, dim_out: int):
         super(Network, self).__init__()
         #TODO hidden = f(dim_in)
-        hidden = 64
+        hidden = int(2**(np.ceil(np.log2(dim_in)) + 1))
         self.input_dim = dim_in
-        self.inp_layer = nn.Linear(dim_in, hidden)
-        self.fc_layer = nn.Linear(hidden, dim_out)
+        self.inp_layer = initialize_layer(nn.Linear(dim_in, hidden))
+        self.fc_layer = initialize_layer(nn.Linear(hidden, dim_out))
 
     def forward(self, features, activation):
         """ features is the featurized input vector"""         
         input = as_tensor(features, dtype=torch.float)
-        # Padd input when approaching end of episode
-        features_size = len(features)
-        if features_size < self.input_dim:
-            padd = torch.ones(self.input_dim-features_size, dtype=torch.float)
-            input = torch.cat((input,padd) ) 
-        output = self.fc_layer(F.relu(self.inp_layer(input)))
-        return  activation(output)
+        x = self.inp_layer(input) 
+        x = self.fc_layer(x)
+        output = activation(x)
+        return  output
     
-    def initialize_layer(layer):
-        pass
+    
 
 class ActorNet(Network):
     def __init__(self, n_features: int , n_actions: int ):
@@ -39,14 +42,17 @@ class ActorNet(Network):
             Number of actions
         """
         super(ActorNet, self).__init__(n_features, n_actions)
+        
+         
     
     def forward(self, features):
-        return super().forward(features, lambda inp :F.softmax(inp, dim=-1))
+        return super().forward(features, lambda inp : inp)
 
 class CriticNet(Network):
     """ Standard critic """
     def __init__(self, n_features: int ):
         super(CriticNet, self).__init__(n_features, 1)
+        
         self.needs_agent_feature = False
     
     def forward(self, features):
@@ -71,6 +77,7 @@ class OptionCriticNet(Network):
             Human control cost        
         """
         super(OptionCriticNet, self).__init__(n_features, 1)
+        
         self.c_M = c_c_M
         self.c_H = c_c_H
         self.needs_agent_feature = True
@@ -83,7 +90,7 @@ class OptionCriticNet(Network):
             The featurized state vector with appended the agent (Machine or Human) feature value            
         """
         # TODO: change (if features[-1]) for 1-hot encoding
-        agent_control_cost = self.c_M if features[-1] else self.c_H
+        agent_control_cost = self.c_M if features[-2] else self.c_H
         return super().forward(features, lambda inp : inp+agent_control_cost)
 
 if __name__ == '__main__':
