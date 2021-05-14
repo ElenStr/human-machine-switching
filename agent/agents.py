@@ -34,11 +34,12 @@ class MachineDriverAgent(Agent):
     def __init__(self, n_state_features, n_actions, optimizer, c_M=0., entropy_weight=0.01):
         """Initialize network and hyperparameters"""
         super(MachineDriverAgent, self).__init__()
-        self.network = ActorNet(n_state_features, n_actions)
+        self.network = ActorNet(n_state_features[1], n_actions)
         self.optimizer = optimizer(self.network.parameters())
         self.entropy_weight = entropy_weight
         self.control_cost = c_M
         self.trainable = True
+        self.n_state_features = n_state_features[0]
 
 
     def update_obs(self, *args):
@@ -68,12 +69,13 @@ class MachineDriverAgent(Agent):
         log_pi =  current_policy.log_prob(torch.as_tensor(action))
         # TODO: entropy = entropy.mean() for batch update 
         entropy = current_policy.entropy()
-        policy_loss = weighting * delta * log_pi + self.entropy_weight*entropy
+        policy_loss = weighting * delta * log_pi  + self.entropy_weight*entropy
         # TODO: policy_loss = policy_loss.mean() for batch update
 
         self.optimizer.zero_grad()
         policy_loss.backward()
         self.optimizer.step()
+
 
     def take_action(self, curr_state):
         """
@@ -92,9 +94,9 @@ class MachineDriverAgent(Agent):
             The action policy distribution given form the network
         """
         # TODO: make machine worse than human+machine e.g. same feature value for road-stone
-        state_feature_vector  = state2features(curr_state)
-        actions_probs = self.network(state_feature_vector)
-        policy = torch.distributions.Categorical(probs=actions_probs)
+        state_feature_vector  = state2features(curr_state, self.n_state_features)
+        actions_logits = self.network(state_feature_vector)
+        policy = torch.distributions.Categorical(logits=actions_logits)
         action = policy.sample().item()
         return action, policy  
 
@@ -126,12 +128,12 @@ class NoisyDriverAgent(Agent):
     def update_policy(self, state, action):
         """Update policy approximation, needed for the off policy stage"""
         # The human action in reality depends only on next row
-        human_obs = state[2:6] 
+        human_obs = tuple(state[2:6] )
         self.policy_approximation[human_obs][action]+=1
             
     def get_policy_approximation(self, state, action):
         """ The approximated action policy distribution given the state """
-        human_obs = state[2:6] 
+        human_obs = tuple(state[2:6] )
         total_state_visit = sum(self.policy_approximation[human_obs])
         p_human_a_s = self.policy_approximation[human_obs][action] / total_state_visit
         return p_human_a_s

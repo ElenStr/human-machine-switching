@@ -170,7 +170,7 @@ class Environment:
         self.traffic_levels = TRAFFIC_LEVELS
         self.type_costs = TYPE_COSTS
 
-    def generate_grid_world(self, width, height, init_traffic_level: str):
+    def generate_grid_world(self, width, height, init_traffic_level: str, depth=3):
         """
         Assign each cell a type (i.e., 'road', 'grass', 'stone', or 'car')
         independently at random based on the traffic level.
@@ -219,5 +219,5 @@ class Environment:
 
         middle_width = width // 2
         cells[middle_width, 0] = 'road'
-        grid_world = GridWorld(width, height, cells, traffics, self.type_costs)
+        grid_world = GridWorld(width, height, cells, traffics, self.type_costs, depth)
         return grid_world    

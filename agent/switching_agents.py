@@ -4,6 +4,8 @@ Implementation of various switching agents
 import numpy as np
 import copy
 import random
+from torch import nn
+import torch
 
 from agent.agents import  Agent
 from networks.networks import CriticNet, OptionCriticNet
@@ -31,7 +33,7 @@ class FixedSwitchingMachine(Agent):
     def __init__(self, n_state_features, optimizer):
         """Initialize network and hyperparameters"""
         super(FixedSwitchingMachine, self).__init__()
-        self.network = CriticNet(n_state_features)
+        self.network = CriticNet(n_state_features[1])
         self.optimizer = optimizer(self.network.parameters())
         self.trainable = True
 
@@ -74,10 +76,11 @@ class SwitchingAgent(Agent):
         """Initialize network and hyperparameters"""
         super(SwitchingAgent, self).__init__()
         # TODO: change  n_state_features+1 for 1-hot encoding  
-        self.network = OptionCriticNet(n_state_features+1,c_M,c_H)
+        self.network = OptionCriticNet(n_state_features[1]+2,c_M,c_H)
         self.optimizer = optimizer(self.network.parameters())
         self.epsilon = eps
         self.trainable = True
+        self.n_state_features = n_state_features[0]
 
 
     def update_obs(self, *args):
@@ -102,9 +105,9 @@ class SwitchingAgent(Agent):
         # maybe weighting needs clamp(0,1)!!!
         v_loss = td_error.pow(2).mul(0.5).mul(weighting)
         # TODO: v_loss = v_loss.mean() for batch update
-
         self.optimizer.zero_grad()
         v_loss.backward()
+        nn.utils.clip_grad_norm_(self.network.parameters(), 0.8)
         self.optimizer.step()
 
     def take_action(self, curr_state):
@@ -121,11 +124,11 @@ class SwitchingAgent(Agent):
         switch: int
             The switching decision
         """
-        state_feature_vector  = state2features(curr_state)
+        state_feature_vector  = state2features(curr_state, self.n_state_features)
         # TODO: change human/machine feauture value for 1-hot encoding
          
-        human_option_value = self.network(state_feature_vector + [1.]).detach().item()
-        machine_option_value = self.network(state_feature_vector + [2.]).detach().item()
+        human_option_value = self.network(state_feature_vector + [0.,1.]).detach().item()
+        machine_option_value = self.network(state_feature_vector + [1.,0.]).detach().item()
         # epsilon greedy
         p = random.random()
         if p < 1- self.epsilon:
