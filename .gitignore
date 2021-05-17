@@ -1,3 +1,4 @@
 # ignore bytecode
 *\__pycache__\*
 *\__pycache__
+\outputs\
