@@ -95,11 +95,11 @@ def learn_evaluate(switching_agent: Agent, acting_agents, env: GridWorld,is_lear
                 total_costs += c_tplus1            
 
             if plt_path is not None and not finished:
+                if d_t:
+                    plt_path.add_line(src, human_only_dst, HUMAN_COLOR)
                 clr = MACHINE_COLOR if d_t else HUMAN_COLOR
                 plt_path.add_line(src, dst, clr)
                 # add human != dummy for machine only
-                if d_t:
-                    plt_path.add_line(src, human_only_dst, HUMAN_COLOR)
 
     if ret_trajectory:
         return trajectory
@@ -127,7 +127,7 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory , n_try=1
     total_cost : int
         Average total cost of the trajectory
     """
-    total_costs = 0
+    total_cost = 0
     count = 0
      
 
@@ -143,7 +143,7 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory , n_try=1
             
             
             c_tplus1 = cost + option.control_cost
-            
+            total_cost+= c_tplus1
             if switching_agent.trainable:
                 next_features = state2features(next_state, switching_agent.n_state_features) 
                 with torch.no_grad():
@@ -178,6 +178,8 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory , n_try=1
                 M_t = d_t + var_rho*M_t
                 emphatic_weighting = rho * M_t
                 acting_agents[1].update_policy(emphatic_weighting, delta, policy, action)
+    
+    
 
             
             

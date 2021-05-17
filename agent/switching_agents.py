@@ -35,6 +35,7 @@ class FixedSwitchingMachine(Agent):
         super(FixedSwitchingMachine, self).__init__()
         self.network = CriticNet(n_state_features[1])
         self.optimizer = optimizer(self.network.parameters())
+        self.n_state_features = n_state_features[0]
         self.trainable = True
 
 

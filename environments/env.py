@@ -207,12 +207,12 @@ class Environment:
 
 
         # Add random grass sequence in middle lane
-        # pick end-start in [L/6, L/3] if machine view is L/3 rows
-        # choose start in [L/3(2?),L]
+        # pick end-start in [2, depth] if machine view is L/3 rows
+        # choose start in [L/3(2?),L - depth - 1]
                 
         if grass_obstacle:
-            n_grass_cells = random.randint(height//6, height//3)
-            start = random.randint(height//3,height-1)
+            n_grass_cells = random.randint(2, depth)
+            start = random.randint(height//3,height-depth - 1)
             for r in range(start, start+n_grass_cells):
                 cells[1, r] = 'grass'
 

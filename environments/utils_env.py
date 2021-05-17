@@ -56,8 +56,7 @@ def state2features(state, n_features, real_v=False):
     if real_v:
         features.append((feature + 1)*0.2)
     else:
-        features.extend(feature2onehot(feature, cell_t.size))
-
+        features.extend(feature2onehot(feature, cell_t.size - 1))
 
     for i in range(1,n_features):
         if (i-1) % (WIDTH+1) == 0:
@@ -81,6 +80,5 @@ def state2features(state, n_features, real_v=False):
                 features.extend(feature2onehot(feature, cell_t.size)) 
 
 
-    # print(features)
     return features
 

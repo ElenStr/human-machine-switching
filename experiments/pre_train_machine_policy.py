@@ -7,12 +7,14 @@ from definitions import ROOT_DIR
 from experiments.utils import learn_off_policy, learn_evaluate
 from agent.agents import Agent
 
-def save_agent_cost(agent, costs, on_off):
-    with open(ROOT_DIR + '/outputs/agents/pre_trained_machine/machine_agent_'+on_off, 'wb') as file:
-        pickle.dump(agent, file, pickle.HIGHEST_PROTOCOL)
-
-    with open(ROOT_DIR + '/outputs/agents/pre_trained_machine/machine_costs_'+on_off, 'wb') as file:
-        pickle.dump(costs, file, pickle.HIGHEST_PROTOCOL)
+def save_agent_cost(actor_agent, critic_agent, costs, on_off):
+    with open(ROOT_DIR + '/outputs/agents/pre_trained_machine/actor_agent_'+on_off, 'wb') as file:
+        pickle.dump(actor_agent, file, pickle.HIGHEST_PROTOCOL)
+    with open(ROOT_DIR + '/outputs/agents/pre_trained_machine/critic_agent_'+on_off, 'wb') as file:
+        pickle.dump(critic_agent, file, pickle.HIGHEST_PROTOCOL)
+    if len(costs):
+        with open(ROOT_DIR + '/outputs/agents/pre_trained_machine/machine_costs_'+on_off, 'wb') as file:
+            pickle.dump(costs, file, pickle.HIGHEST_PROTOCOL)
 
 
 def run_pre_train_machine(switching_agent: Agent, agents,
@@ -61,16 +63,17 @@ def run_pre_train_machine(switching_agent: Agent, agents,
 
 
     for ep,traj in enumerate(trajectories):
-        ep_cost = learn_off_policy(switching_agent, agents, traj)
-        machine_costs.append(ep_cost)
+        #TODO learn off policy return sth useful maybe Q ?
+        learn_off_policy(switching_agent, agents, traj)
+        # machine_costs.append(ep_cost)
 
-        # print log
-        if verbose and ep % 1000 == 0 and (ep // 1000 > 0):
-            print(f'{datetime.datetime.now()}, Episode {ep}, Fully automated off-policy algorithm cumulative cost: {np.sum(machine_costs)}')
+        # # print log
+        # if verbose and ep % 1000 == 0 and (ep // 1000 > 0):
+        #     print(f'{datetime.datetime.now()}, Episode {ep}, Fully automated off-policy algorithm cumulative cost: {np.sum(machine_costs)}')
 
         # save agent
         if save_agent and (ep % 1000 == 0) and (ep // 1000 > 0):
-            save_agent_cost(machine, machine_costs, 'off')
+            save_agent_cost(switching_agent, machine, machine_costs, 'off')
         
     for ep in range(n_episode_on):
         grid_world = env_generator()
@@ -83,7 +86,7 @@ def run_pre_train_machine(switching_agent: Agent, agents,
 
         # save agent
         if save_agent and (ep % 1000 == 0) and (ep // 1000 > 0):
-            save_agent_cost(machine, machine_costs, 'on')
+            save_agent_cost(switching_agent, machine, machine_costs, 'on')
 
     
     
