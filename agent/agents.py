@@ -100,7 +100,8 @@ class MachineDriverAgent(Agent):
         action = policy.sample().item()
         return action, policy  
 
-
+def dd_init():
+    return [0]*3
 
 class NoisyDriverAgent(Agent):
     def __init__(self, env: Environment, noise_sd: float, noise_sw=.0, c_H=0.):
@@ -123,7 +124,9 @@ class NoisyDriverAgent(Agent):
         self.type_costs = env.type_costs
         self.control_cost = c_H
         self.trainable = False
-        self.policy_approximation = defaultdict(lambda: [0]*3)
+        # needed to pickle human
+        
+        self.policy_approximation = defaultdict(dd_init)
 
     def update_policy(self, state, action):
         """Update policy approximation, needed for the off policy stage"""

@@ -1,3 +1,4 @@
+from collections import defaultdict
 import random
 import torch 
 import numpy as np
@@ -11,7 +12,7 @@ from plot.plot_path import HUMAN_COLOR, MACHINE_COLOR, PlotPath
  
 
 
-def learn_evaluate(switching_agent: Agent, acting_agents, env: GridWorld,is_learn: bool, ret_trajectory=False, n_try=1, plt_path=None):
+def learn_evaluate(switching_agent: Agent, acting_agents, env: GridWorld,is_learn: bool, ret_trajectory=False, n_try=1, plt_path=None, machine_only=False):
     """
     Learn (on policy) or evaluate overall policy in a grid environment.
 
@@ -43,13 +44,16 @@ def learn_evaluate(switching_agent: Agent, acting_agents, env: GridWorld,is_lear
     if ret_trajectory:
         trajectory = []
 
-
+    human_cf_lines = []
+    human_cf_costs = []
     for i in range(n_try):
         count += 1
         finished = False
         env.reset()
         d_tminus1 = 0
+        timestep = 0
         while not finished:
+            timestep+=1
             current_state = env.current_state()
             src = env.current_coord
 
@@ -59,9 +63,22 @@ def learn_evaluate(switching_agent: Agent, acting_agents, env: GridWorld,is_lear
                action = option.take_action(current_state, d_tminus1)
             else:
                 action, policy = option.take_action(current_state)
-                # record here human alternative
-                human_only_action = acting_agents[0].take_action(current_state)
-                human_only_dst = env.next_cell(human_only_action, move=False)[0]
+                
+                for key in range(len(human_cf_lines)):
+                    cf_src =  human_cf_lines[key][-1][1]
+                    cf_state = env.coords2state(cf_src[0], cf_src[1])
+                    cf_action =  acting_agents[0].take_action(cf_state)
+                    cf_dst = env.next_coords(cf_src[0], cf_src[1], cf_action)
+                    human_cf_lines[key].append((cf_src, cf_dst))
+                    human_cf_costs[key]+=(env.type_costs[env.cell_types[cf_dst]])
+
+                if (not machine_only) or (machine_only and timestep==1):# record here human alternative
+                    human_only_action = acting_agents[0].take_action(current_state)
+                    human_only_dst = env.next_cell(human_only_action, move=False)[0]
+                    human_cf_lines.append([(src, human_only_dst)])
+                    human_cf_costs.append(total_costs + env.type_costs[env.cell_types[human_only_dst]])
+                            
+
             
             next_state, cost, finished = env.step(action)
             dst = env.current_coord
@@ -94,15 +111,18 @@ def learn_evaluate(switching_agent: Agent, acting_agents, env: GridWorld,is_lear
             if not finished:
                 total_costs += c_tplus1            
 
-            if plt_path is not None and not finished:
-                if d_t:
-                    plt_path.add_line(src, human_only_dst, HUMAN_COLOR)
+            if plt_path is not None and not finished:               
+
                 clr = MACHINE_COLOR if d_t else HUMAN_COLOR
                 plt_path.add_line(src, dst, clr)
                 # add human != dummy for machine only
-
+    if human_cf_costs:
+        key = np.argmin(human_cf_costs)
+        for src, dst in human_cf_lines[key][:-1]:
+            plt_path.add_line(src, dst, HUMAN_COLOR)
     if ret_trajectory:
         return trajectory
+                    # plt_path.add_line(src, human_only_dst, HUMAN_COLOR)
 
     return total_costs / count
 
@@ -172,12 +192,14 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory , n_try=1
 
                 emphatic_weighting  = rho * F_t              
                 switching_agent.update_policy(emphatic_weighting, td_error)
+                assert torch.any(list(switching_agent.network.parameters())[0].grad > 0.)
         
-            if acting_agents[1].trainable and d_t:
+            if acting_agents[1].trainable:
                 delta = cost + v_tplus1 - v_t.detach()
                 M_t = d_t + var_rho*M_t
                 emphatic_weighting = rho * M_t
                 acting_agents[1].update_policy(emphatic_weighting, delta, policy, action)
+                assert torch.any(list(acting_agents[1].network.parameters())[0].grad > 0.)
     
     
 

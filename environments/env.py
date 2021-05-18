@@ -61,6 +61,27 @@ class GridWorld:
 
         self.depth = depth
 
+    def next_coords(self, x,y, action):
+        # the new cell after taking 'action'
+        x_n, y_n = x + action - 1, y + 1
+
+        # TODO: add termination when hitting a car 
+        # maybe better in step function
+        # the top row
+        if y_n >= self.height:
+            y_n = y
+
+        # handle wall
+        is_wall = x_n < 0 or x_n >= self.width
+        if is_wall:
+            if x_n < 0:
+                x_n = 0
+            else:
+                x_n = self.width - 1
+
+        next_coord = (x_n, y_n)
+      
+        return next_coord
     def next_cell(self, action: int, move: bool =True):
         """
         Coordinates of the next cell if action is taken
@@ -107,6 +128,31 @@ class GridWorld:
             self.current_coord = next_coord
 
         return next_coord, finished
+
+    def coords2state(self, x,y):
+        state = [self.cell_types[x,y]]       
+        nxt = 1
+        # Add wall type if current cell is leftmost (rightmost)
+        # if not in last row
+        if x==0 and y<self.height-1:
+            nxt = 2
+            state.append(self.traffic_levels[y+1])
+            state.append('wall')
+            for r in range(2):
+                state.append(self.cell_types[r, y+1])
+        elif x==self.width - 1 and y<self.height-1 :
+            nxt = 2
+            state.append(self.traffic_levels[y+1])
+            for r in range(1,3):
+                state.append(self.cell_types[r, y+1])
+            state.append('wall')
+        # state includes min(depth, remaining rows ahead )
+        upper_bound = min(self.depth, self.height-y -1) +1
+        for i in range(nxt,upper_bound):
+            state.append(self.traffic_levels[y+i])            
+            for r in range(3):
+                state.append(self.cell_types[r, y+i])
+        return state
 
     def current_state(self):
         """
@@ -155,6 +201,7 @@ class GridWorld:
     def reset(self):
         """ resets the trajectory """
         self.current_coord = ((self.width - 1) // 2, 0)
+
 
 
 class Environment:
