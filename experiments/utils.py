@@ -40,14 +40,14 @@ def learn_evaluate(switching_agent: Agent, acting_agents, env: GridWorld,is_lear
         Average total cost of the trajectory
     """
     total_costs = 0
-    count = 0
+    
     if ret_trajectory:
         trajectory = []
 
     human_cf_lines = []
     human_cf_costs = []
     for i in range(n_try):
-        count += 1
+        
         finished = False
         env.reset()
         d_tminus1 = 0
@@ -124,7 +124,7 @@ def learn_evaluate(switching_agent: Agent, acting_agents, env: GridWorld,is_lear
         return trajectory
                     # plt_path.add_line(src, human_only_dst, HUMAN_COLOR)
 
-    return total_costs / count
+    return total_costs / n_try
 
 
 def learn_off_policy(switching_agent: Agent, acting_agents, trajectory , n_try=1, plt_path=None):
@@ -238,7 +238,7 @@ def gather_human_trajectories(human: Agent, env_gen: Environment, n_episodes: in
     
     for ep in range(n_episodes):
         env = env_gen.generate_grid_world(**env_params)
-        traj = learn_evaluate(fixed_switch, [human], env, False, True)
+        traj = learn_evaluate(fixed_switch, [human], env, is_learn = False, ret_trajectory=True)
         trajectories.append(traj[:-1])
     print(ep)
     return trajectories
