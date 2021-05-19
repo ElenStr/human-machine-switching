@@ -46,7 +46,6 @@ class MachineDriverAgent(Agent):
         """Return input batch  for training"""
         pass
 
-# Need to use njit decorator?
     def update_policy(self, weighting, delta, current_policy, action):
         """
         Implement train step 
@@ -100,6 +99,7 @@ class MachineDriverAgent(Agent):
         action = policy.sample().item()
         return action, policy  
 
+# needed to pickle human
 def dd_init():
     return [0]*3
 
@@ -124,19 +124,18 @@ class NoisyDriverAgent(Agent):
         self.type_costs = env.type_costs
         self.control_cost = c_H
         self.trainable = False
-        # needed to pickle human
         
         self.policy_approximation = defaultdict(dd_init)
 
     def update_policy(self, state, action):
         """Update policy approximation, needed for the off policy stage"""
         # The human action in reality depends only on next row
-        human_obs = tuple(state[2:6] )
+        human_obs = tuple(state[2:5] )
         self.policy_approximation[human_obs][action]+=1
             
     def get_policy_approximation(self, state, action):
         """ The approximated action policy distribution given the state """
-        human_obs = tuple(state[2:6] )
+        human_obs = tuple(state[2:5] )
         total_state_visit = sum(self.policy_approximation[human_obs])
         p_human_a_s = self.policy_approximation[human_obs][action] / total_state_visit
         return p_human_a_s
