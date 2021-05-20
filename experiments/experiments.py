@@ -18,9 +18,18 @@ def save_agent_cost(name, actor, critic, costs, on_off):
         with open(f'{ROOT_DIR}/outputs/agents/{name}/costs_'+on_off, 'wb') as file:
             pickle.dump(costs, file, pickle.HIGHEST_PROTOCOL)
 
+def evaluate(switching_agent, acting_agents, eval_set, n_try=1, plt_path=None):
+    eval_costs = []
+    for grid in eval_set:
+        cost = learn_evaluate(switching_agent, acting_agents, grid, is_learn=False, ret_trajectory=False, n_try=n_try, plt_path=plt_path)
+        eval_costs.append(cost)
+    
+    return np.mean(eval_costs)
 
-def train_experiments(algos, trajectories, env_generator, n_episode_on: int,
-                          verbose: bool = True, save_agent: bool = True):
+
+def train(algos, trajectories, env_generator, n_episode_on: int,
+                      eval_set, eval_freq: int, save_freq: int,
+                      verbose: bool = True, save_agent: bool = True):
     """
     Train the switching and machine policy for different configurations
     of machine and switching agents.
@@ -40,11 +49,20 @@ def train_experiments(algos, trajectories, env_generator, n_episode_on: int,
     n_episode_on: int
         Number of episodes in the on-policy stage
 
+    eval_set:
+        Evaluation set of environments to keep track on training progress
+
+    eval_freq: int
+        Agents' evaluation frequenncy
+
+    save_freq: int
+        Agents' and costs; saving frequency
+
     verbose : bool
-        If `True`, then it will print logs every 1000 episodes
+        If `True`, then it will print logs every eval_frequency episodes
 
     save_agent: bool
-        If `True`, then it saves the agent each 1000 episodes
+        If `True`, then it saves the agent each save_freq episodes
 
     Returns
     -------
@@ -64,14 +82,15 @@ def train_experiments(algos, trajectories, env_generator, n_episode_on: int,
             
             #TODO learn off policy return sth useful maybe Q ?
             learn_off_policy(switching_agent, acting_agents, traj)
-            # algos_costs.append(ep_cost)
 
-            # # print log
-            # if verbose and ep % 1000 == 0 and (ep // 1000 > 0):
-            #     print(f'{datetime.datetime.now()}, Episode {ep}, Fully automated off-policy algorithm cumulative cost: {np.sum(algos_costs)}')
+            # print log
+            if verbose and ep % eval_freq == 0 and (ep // eval_freq > 0):
+                eval_cost = evaluate(switching_agent, acting_agents, eval_set)
+                print(f'{datetime.datetime.now()}, Off-policy, Episode {ep}, {algo} evaluation cost: {eval_cost}')
+                algos_costs[algo].append(eval_cost) 
 
             # save agent
-            if save_agent and (ep % 1000 == 0) and (ep // 1000 > 0):
+            if save_agent and (ep % save_freq == 0) and (ep // save_freq > 0):
                 save_agent_cost(algo, switching_agent, machine, algos_costs[algo], 'off')
         
     for ep in range(n_episode_on):
@@ -80,19 +99,17 @@ def train_experiments(algos, trajectories, env_generator, n_episode_on: int,
             switching_agent, acting_agents = agents
             machine = acting_agents[1]
 
-            ep_cost = learn_evaluate(switching_agent, acting_agents, grid_world, is_learn=True)
-            algos_costs[algo].append(ep_cost)
+            learn_evaluate(switching_agent, acting_agents, grid_world, is_learn=True)
 
             # print log
-            if verbose and ep % 1000 == 0 and (ep // 1000 > 0):
-                print(f'{datetime.datetime.now()}, Episode {ep}, {algo} on-policy training \
-                            average cost per 1000: {np.sum(algos_costs[algo][-1000:])/1000}')
+            if verbose and ep % eval_freq == 0 and (ep // eval_freq > 0):
+                eval_cost = evaluate(switching_agent, acting_agents, eval_set)
+                print(f'{datetime.datetime.now()}, On-policy, Episode {ep}, {algo}  evaluation cost: {eval_cost}')
+                algos_costs[algo].append(eval_cost)
 
             # save agent
-            if save_agent and (ep % 1000 == 0) and (ep // 1000 > 0):
-                save_agent_cost(algo, switching_agent, machine, algos_costs[algo], 'on')
-
-    
+            if save_agent and (ep % save_freq == 0) and (ep // save_freq > 0):
+                save_agent_cost(algo, switching_agent, machine, algos_costs[algo], 'on')   
     
     
     
