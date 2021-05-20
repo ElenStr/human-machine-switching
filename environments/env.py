@@ -217,6 +217,17 @@ class Environment:
         self.traffic_levels = TRAFFIC_LEVELS
         self.type_costs = TYPE_COSTS
 
+    def n_state_strings(self, depth, width):
+        """State size with string features"""
+        return 1 + depth*(width + 1)
+    
+    def n_state_one_hot(self, depth, width):
+        """State size in 1-hot encoding"""
+        n_cell_types = len(self.cell_types)
+        n_traffic_levels = len(self.traffic_levels)
+        n_state_features_1hot =  n_cell_types + depth*( n_traffic_levels + 1 + width*(n_cell_types + 1))
+        return n_state_features_1hot
+
     def generate_grid_world(self, width, height, init_traffic_level: str, depth=3):
         """
         Assign each cell a type (i.e., 'road', 'grass', 'stone', or 'car')
