@@ -46,13 +46,11 @@ def learn_evaluate(switching_agent: Agent, acting_agents, env: GridWorld,is_lear
 
     human_cf_lines = []
     human_cf_costs = []
-    for i in range(n_try):
-        
-        finished = False
+    for i in range(n_try):       
         env.reset()
         d_tminus1 = 0
         timestep = 0
-        while not finished:
+        while True:
             timestep+=1
             current_state = env.current_state()
             src = env.current_coord
@@ -63,31 +61,33 @@ def learn_evaluate(switching_agent: Agent, acting_agents, env: GridWorld,is_lear
                action = option.take_action(current_state, d_tminus1)
             else:
                 action, policy = option.take_action(current_state)
-                
-                for key in range(len(human_cf_lines)):
-                    cf_src =  human_cf_lines[key][-1][1]
-                    cf_state = env.coords2state(cf_src[0], cf_src[1])
-                    cf_action =  acting_agents[0].take_action(cf_state)
-                    cf_dst = env.next_coords(cf_src[0], cf_src[1], cf_action)
-                    human_cf_lines[key].append((cf_src, cf_dst))
-                    human_cf_costs[key]+=(env.type_costs[env.cell_types[cf_dst]])
+                if plt_path is not None:
+                    for key in range(len(human_cf_lines)):
+                        cf_src =  human_cf_lines[key][-1][1]
+                        cf_state = env.coords2state(cf_src[0], cf_src[1])
+                        cf_action =  acting_agents[0].take_action(cf_state)
+                        cf_dst = env.next_coords(cf_src[0], cf_src[1], cf_action)
+                        human_cf_lines[key].append((cf_src, cf_dst))
+                        human_cf_costs[key]+=(env.type_costs[env.cell_types[cf_dst]])
 
-                if (not machine_only) or (machine_only and timestep==1):# record here human alternative
-                    human_only_action = acting_agents[0].take_action(current_state)
-                    human_only_dst = env.next_cell(human_only_action, move=False)[0]
-                    human_cf_lines.append([(src, human_only_dst)])
-                    human_cf_costs.append(total_costs + env.type_costs[env.cell_types[human_only_dst]])
+                    if (not machine_only) or (machine_only and timestep==1):# record here human alternative
+                        human_only_action = acting_agents[0].take_action(current_state)
+                        human_only_dst = env.next_cell(human_only_action, move=False)[0]
+                        human_cf_lines.append([(src, human_only_dst)])
+                        human_cf_costs.append(total_costs + env.type_costs[env.cell_types[human_only_dst]])
                             
 
             
             next_state, cost, finished = env.step(action)
+            if finished:
+                break 
             dst = env.current_coord
 
             c_tplus1 = cost + option.control_cost
             if ret_trajectory:
                 acting_agents[0].update_policy(current_state,action)
                 trajectory.append((current_state, action, next_state, cost))
-            if is_learn and not finished:
+            if is_learn:
                 if switching_agent.trainable:
                     next_features = state2features(next_state, switching_agent.n_state_features) 
                     with torch.no_grad():
@@ -102,27 +102,28 @@ def learn_evaluate(switching_agent: Agent, acting_agents, env: GridWorld,is_lear
                     v_t = switching_agent.network(features)
                     
                     td_error = c_tplus1 + v_tplus1 - v_t
+                    assert td_error
                     switching_agent.update_policy(1, td_error)
+                    assert torch.any(list(switching_agent.network.parameters())[0].grad > 0.)
+
             
                 if option.trainable and d_t:
                     delta = v_t.detach()
                     option.update_policy(d_t, delta, policy, action)
 
-            if not finished:
-                total_costs += c_tplus1            
+            total_costs += c_tplus1            
 
-            if plt_path is not None and not finished:               
-
+            if plt_path is not None:               
                 clr = MACHINE_COLOR if d_t else HUMAN_COLOR
                 plt_path.add_line(src, dst, clr)
-                # add human != dummy for machine only
+    
     if human_cf_costs:
         key = np.argmin(human_cf_costs)
         for src, dst in human_cf_lines[key][:-1]:
             plt_path.add_line(src, dst, HUMAN_COLOR)
     if ret_trajectory:
         return trajectory
-                    # plt_path.add_line(src, human_only_dst, HUMAN_COLOR)
+                    
 
     return total_costs / n_try
 
@@ -147,23 +148,18 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory , n_try=1
     total_cost : int
         Average total cost of the trajectory
     """
-    total_cost = 0
-    count = 0
-     
 
     for i in range(n_try):
-        count += 1
         M_t = 0
         F_t = 0
         for t in trajectory:
             (current_state, action, next_state, cost) = t            
 
             d_t = switching_agent.take_action(current_state)
-            option = acting_agents[d_t]           
-            
-            
+            option = acting_agents[d_t]          
+                        
             c_tplus1 = cost + option.control_cost
-            total_cost+= c_tplus1
+            
             if switching_agent.trainable:
                 next_features = state2features(next_state, switching_agent.n_state_features) 
                 with torch.no_grad():
@@ -181,7 +177,7 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory , n_try=1
 
                 mu_t = acting_agents[0].get_policy_approximation(current_state, action)
                 
-                policy = acting_agents[1].take_action(next_state)[1]
+                policy = acting_agents[1].take_action(current_state)[1]
                 with torch.no_grad():
                     machine_pi_t = policy.probs[action].item()
                 rho = machine_pi_t / mu_t
@@ -190,7 +186,9 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory , n_try=1
                 var_rho = var_pi_t / mu_t
                 F_t = 1 + var_rho * F_t
 
-                emphatic_weighting  = rho * F_t              
+                emphatic_weighting  = rho * F_t 
+                assert td_error 
+                assert emphatic_weighting            
                 switching_agent.update_policy(emphatic_weighting, td_error)
                 assert torch.any(list(switching_agent.network.parameters())[0].grad > 0.)
         
@@ -198,6 +196,8 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory , n_try=1
                 delta = cost + v_tplus1 - v_t.detach()
                 M_t = d_t + var_rho*M_t
                 emphatic_weighting = rho * M_t
+                assert emphatic_weighting
+                assert delta
                 acting_agents[1].update_policy(emphatic_weighting, delta, policy, action)
                 assert torch.any(list(acting_agents[1].network.parameters())[0].grad > 0.)
     
@@ -239,7 +239,7 @@ def gather_human_trajectories(human: Agent, env_gen: Environment, n_episodes: in
     for ep in range(n_episodes):
         env = env_gen.generate_grid_world(**env_params)
         traj = learn_evaluate(fixed_switch, [human], env, is_learn = False, ret_trajectory=True)
-        trajectories.append(traj[:-1])
+        trajectories.append(traj)
     print(ep)
     return trajectories
 

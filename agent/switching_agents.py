@@ -108,7 +108,7 @@ class SwitchingAgent(Agent):
         # TODO: v_loss = v_loss.mean() for batch update
         self.optimizer.zero_grad()
         v_loss.backward()
-        nn.utils.clip_grad_norm_(self.network.parameters(), 0.8)
+        # nn.utils.clip_grad_norm_(self.network.parameters(), 0.8)
         self.optimizer.step()
 
     def take_action(self, curr_state):
