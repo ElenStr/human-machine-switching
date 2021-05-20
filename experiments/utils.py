@@ -108,7 +108,9 @@ def learn_evaluate(switching_agent: Agent, acting_agents, env: GridWorld,is_lear
 
             
                 if option.trainable and d_t:
-                    delta = v_t.detach()
+                    with torch.no_grad():
+                        v_t = switching_agent.network(features)
+                    delta = v_t
                     option.update_policy(d_t, delta, policy, action)
 
             total_costs += c_tplus1            
@@ -193,7 +195,11 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory , n_try=1
                 assert torch.any(list(switching_agent.network.parameters())[0].grad > 0.)
         
             if acting_agents[1].trainable:
-                delta = cost + v_tplus1 - v_t.detach()
+                with torch.no_grad():
+                    v_tplus1 = switching_agent.network(next_features)
+                    v_t = switching_agent.network(features)
+                
+                delta = cost + v_tplus1 - v_t
                 M_t = d_t + var_rho*M_t
                 emphatic_weighting = rho * M_t
                 assert emphatic_weighting
@@ -240,7 +246,6 @@ def gather_human_trajectories(human: Agent, env_gen: Environment, n_episodes: in
         env = env_gen.generate_grid_world(**env_params)
         traj = learn_evaluate(fixed_switch, [human], env, is_learn = False, ret_trajectory=True)
         trajectories.append(traj)
-    print(ep)
     return trajectories
 
 
