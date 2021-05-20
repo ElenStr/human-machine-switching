@@ -76,7 +76,7 @@ def learn_evaluate(switching_agent: Agent, acting_agents, env: GridWorld,is_lear
                         human_cf_lines.append([(src, human_only_dst)])
                         human_cf_costs.append(total_costs + env.type_costs[env.cell_types[human_only_dst]])
                             
-
+            d_tminus1 = d_t
             
             next_state, cost, finished = env.step(action)
             if finished:
@@ -110,6 +110,9 @@ def learn_evaluate(switching_agent: Agent, acting_agents, env: GridWorld,is_lear
                 if option.trainable and d_t:
                     with torch.no_grad():
                         v_t = switching_agent.network(features)
+                        # updated d_t?
+                        d_t = switching_agent.take_action(current_state)
+
                     delta = v_t
                     option.update_policy(d_t, delta, policy, action)
 
@@ -198,8 +201,10 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory , n_try=1
                 with torch.no_grad():
                     v_tplus1 = switching_agent.network(next_features)
                     v_t = switching_agent.network(features)
+                    d_t = switching_agent.take_action(current_state)
                 
                 delta = cost + v_tplus1 - v_t
+                # updated dt ?
                 M_t = d_t + var_rho*M_t
                 emphatic_weighting = rho * M_t
                 assert emphatic_weighting

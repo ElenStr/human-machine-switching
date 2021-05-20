@@ -4,6 +4,7 @@
 outputs/*
 
 .vscode/settings.json
+.ssh/*
 heavy_init_traffic_level_test.png
 light_init_traffic_level_test.png
 no-car_init_traffic_level_test.png
