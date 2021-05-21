@@ -7,7 +7,7 @@ def initialize_layer(layer, w_scale=1.):
     nn.init.orthogonal_(layer.weight.data)
     layer.weight.data.mul_(w_scale)
     nn.init.constant_(layer.bias.data, 0)
-    return layer
+    return torch.nn.utils.weight_norm(layer)
 
 class Network(nn.Module):
     """ 1-layer architecture """
@@ -50,13 +50,13 @@ class ActorNet(Network):
 
 class CriticNet(Network):
     """ Standard critic """
-    def __init__(self, n_features: int ):
+    def __init__(self, n_features: int, c_M ):
         super(CriticNet, self).__init__(n_features, 1)
-        
+        self.c_M = c_M
         self.needs_agent_feature = False
     
     def forward(self, features):
-        return super().forward(features, lambda inp : inp)
+        return super().forward(features, lambda inp : inp + self.c_M)
 
 class OptionCriticNet(Network):
     """ Option value critic """
