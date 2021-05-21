@@ -30,10 +30,14 @@ class FixedSwitchingMachine(Agent):
     """
     Switching policy chooses always machine
     """
-    def __init__(self, n_state_features, optimizer):
+    def __init__(self, n_state_features, optimizer, c_M):
         """Initialize network and hyperparameters"""
         super(FixedSwitchingMachine, self).__init__()
-        self.network = CriticNet(n_state_features[1])
+        self.network = CriticNet(n_state_features[1], c_M)
+        self.target_network = CriticNet(n_state_features[1], c_M)
+        self.target_network.load_state_dict(self.network.state_dict())
+        self.target_update_freq = 200
+        self.timesteps = 0
         self.optimizer = optimizer(self.network.parameters())
         self.n_state_features = n_state_features[0]
         self.trainable = True
@@ -56,6 +60,9 @@ class FixedSwitchingMachine(Agent):
         td_error: torch.LongTensor
             TD_error c + V(s+1)  - V(s)
         """
+        if self.timesteps % self.target_update_freq ==0:
+            self.target_network.load_state_dict(self.network.state_dict())
+        self.timesteps+=1
         # weighting and c'(s,a) + V(s+1) must have been computed with torch.no_grad()
         # maybe weighting needs clamp(0,1)!!!
         v_loss = td_error.pow(2).mul(0.5).mul(weighting)
@@ -63,7 +70,9 @@ class FixedSwitchingMachine(Agent):
 
         self.optimizer.zero_grad()
         v_loss.backward()
+        nn.utils.clip_grad_norm_(self.network.parameters(), 1.)
         self.optimizer.step()
+
 
     def take_action(self, curr_state):
         return 1
