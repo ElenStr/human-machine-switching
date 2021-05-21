@@ -19,7 +19,7 @@ TRAFFIC_LEVEL_PROBS = {
 }
 
 # default costs
-TYPE_COSTS = {'road': 0, 'grass': 2, 'stone': 4, 'car': 10}
+TYPE_COSTS = {'road': 1, 'grass': 2, 'stone': 4, 'car': 10}
 
 USE_GRASS_OBSTACLE = True
 
@@ -195,7 +195,7 @@ class GridWorld:
         next_coord, finished = self.next_cell(action)
         next_state = self.current_state()
         # Cost recieved when we enter the state
-        cost = self.type_costs[next_state[0]]
+        cost = -self.type_costs[next_state[0]]
         return next_state, cost, finished
 
     def reset(self):
