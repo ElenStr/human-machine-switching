@@ -40,6 +40,7 @@ class FixedSwitchingMachine(Agent):
         self.timesteps = 0
         self.optimizer = optimizer(self.network.parameters())
         self.n_state_features = n_state_features[0]
+        self.F_t=0
         self.trainable = True
 
 
@@ -87,8 +88,13 @@ class SwitchingAgent(Agent):
         super(SwitchingAgent, self).__init__()
         # TODO: change  n_state_features+1 for 1-hot encoding  
         self.network = OptionCriticNet(n_state_features[1]+2,c_M,c_H)
-        self.optimizer = optimizer(self.network.parameters())
+        self.optimizer = optimizer(self.network.parameters())        
+        self.target_network = OptionCriticNet(n_state_features[1]+2, c_M,c_H)
+        self.target_network.load_state_dict(self.network.state_dict())
+        self.target_update_freq = 200
+        self.timesteps = 0
         self.epsilon = eps
+        self.F_t=0
         self.trainable = True
         self.n_state_features = n_state_features[0]
 
@@ -111,13 +117,16 @@ class SwitchingAgent(Agent):
             TD_error c + switch(s+1)*Q(s+1, M) + (1-switch(s+1))*Q(s+1, H)
             - (switch(s)*Q(s, M) + (1-switch(s))*Q(s, H))
         """
+        if self.timesteps % self.target_update_freq ==0:
+            self.target_network.load_state_dict(self.network.state_dict())
+        self.timesteps+=1
         # weighting and c'(s,a) + V(s+1) must have been computed with torch.no_grad()
         # maybe weighting needs clamp(0,1)!!!
         v_loss = td_error.pow(2).mul(0.5).mul(weighting)
         # TODO: v_loss = v_loss.mean() for batch update
         self.optimizer.zero_grad()
         v_loss.backward()
-        # nn.utils.clip_grad_norm_(self.network.parameters(), 0.8)
+        nn.utils.clip_grad_norm_(self.network.parameters(), 1.)
         self.optimizer.step()
 
     def take_action(self, curr_state):

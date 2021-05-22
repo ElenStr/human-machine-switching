@@ -102,26 +102,35 @@ def learn_evaluate(switching_agent: Agent, acting_agents, env: GridWorld,is_lear
                     v_t = switching_agent.network(features)
                     
                     td_error = c_tplus1 + v_tplus1 - v_t
-                    assert td_error
-                    if  (v_tplus1 - v_t)==0 :
-                        print(v_tplus1)
-                    switching_agent.update_policy(1, td_error)
-                    assert torch.any(list(switching_agent.network.parameters())[0].grad > 0.)
-                    assert torch.all(list(switching_agent.network.parameters())[-1].grad < 1e3)
+                    if td_error==0.:
+                        print('TD Error')
+                        print(c_tplus1,v_tplus1,v_t )
+                    if td_error != 0. :
+                        switching_agent.update_policy(1, td_error)
+                        if not torch.any(list(switching_agent.network.parameters())[0].grad > 0.):
+                            print('critic zero grad ')
+                        if not torch.all(list(switching_agent.network.parameters())[-1].grad < 1e3):
+                            print('critic grad > 1e3')
 
 
             
-                if option.trainable and d_t:
+                if option.trainable:
                     with torch.no_grad():
                         v_t = switching_agent.network(features)
                         # updated d_t?
                         d_t = switching_agent.take_action(current_state)
 
                     delta = v_t
-                    assert delta
-                    option.update_policy(d_t, delta, policy, action)
-                    assert torch.any(list(option.network.parameters())[0].grad > 0.)
-                    assert torch.all(list(option.network.parameters())[-1].grad < 1e3)
+                    if not delta:
+                        print('Vt ',v_t)
+                    
+                    if v_t !=0. and d_t==1:
+                        option.update_policy(d_t, delta, policy, action)
+                    
+                        if not torch.any(list(option.network.parameters())[0].grad > 0.):
+                            print('actor zero grad ')
+                        if not torch.all(list(option.network.parameters())[-1].grad < 1e3):
+                            print('actor grad > 1e3')
 
 
 
@@ -164,8 +173,7 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory , n_try=1
     """
 
     for i in range(n_try):
-        M_t = 0
-        F_t = 0
+        
         for t in trajectory:
             (current_state, action, next_state, cost) = t            
 
@@ -198,32 +206,25 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory , n_try=1
                 
                 var_pi_t = machine_pi_t if d_t else mu_t
                 var_rho = var_pi_t / mu_t
-                F_t = 1 + var_rho * F_t
+                switching_agent.F_t = 1 + var_rho * switching_agent.F_t
 
-                emphatic_weighting  = rho * F_t 
-                if  c_tplus1 == 0:
-                    print("C_tplus1")
-                if  (v_tplus1 - v_t)==0 :
-
-                    print("v_tplus1 - v_t",v_tplus1)
-                    print(current_state, action, next_state)
-
-
-                if td_error==0:
+                emphatic_weighting  = rho * switching_agent.F_t 
+                
+                if not td_error:
                     print("TD error")
-                    print(c_tplus1)
-                    print(v_tplus1)
-                    print(v_t)
+                    print(c_tplus1, v_tplus1, v_t)                   
+                    
 
-                if not emphatic_weighting:
-                    print(rho, F_t, var_rho)
                 if not emphatic_weighting:
                     print('critic emphatic')
-                switching_agent.update_policy(emphatic_weighting, td_error)
-                if not torch.any(list(switching_agent.network.parameters())[0].grad > 0.):
-                    print('critic zero grad ')
-                if not torch.all(list(switching_agent.network.parameters())[-1].grad < 1e3):
-                    print('critic grad > 1e3')
+                    print(rho, switching_agent.F_t, var_rho)
+
+                if td_error != 0. and emphatic_weighting != 0.:
+                    switching_agent.update_policy(emphatic_weighting, td_error)
+                    if not torch.any(list(switching_agent.network.parameters())[0].grad > 0.):
+                        print('critic zero grad ')
+                    if not torch.all(list(switching_agent.network.parameters())[-1].grad < 1e3):
+                        print('critic grad > 1e3')
         
             if acting_agents[1].trainable:
                 with torch.no_grad():
@@ -233,18 +234,20 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory , n_try=1
                 
                 delta = cost + v_tplus1 - v_t
                 # updated dt ?
-                M_t = d_t + var_rho*M_t
-                emphatic_weighting = rho * M_t
+                acting_agents[1].M_t = d_t + var_rho*acting_agents[1].M_t
+                emphatic_weighting = rho * acting_agents[1].M_t
                 if not emphatic_weighting:
-                    print('actor emphatic')
+                    print('actor emphatic ',rho, var_rho, acting_agents[1].M_t )
                 if not delta:
-                    print(cost, v_tplus1, v_t)
-                # assert delta
-                acting_agents[1].update_policy(emphatic_weighting, delta, policy, action)
-                if not torch.any(list(acting_agents[1].network.parameters())[0].grad > 0.):
-                    print('actor zero grad')
-                if not torch.all(list(acting_agents[1].network.parameters())[-1].grad < 1e3):
-                    print('actor grad > 1e3')
+                    print('delta ',cost, v_tplus1, v_t)
+
+                if delta!=0. and emphatic_weighting!=0.:
+                    acting_agents[1].update_policy(emphatic_weighting, delta, policy, action)
+                
+                    if not torch.any(list(acting_agents[1].network.parameters())[0].grad > 0.):
+                        print('actor zero grad')
+                    if not torch.all(list(acting_agents[1].network.parameters())[-1].grad < 1e3):
+                        print('actor grad > 1e3')
     
     
 

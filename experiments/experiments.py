@@ -76,6 +76,7 @@ def train(algos, trajectories, env_generator, n_episode_on: int,
 
 
     for ep,traj in enumerate(trajectories):
+        ep+=1
         for algo, agents in algos.items():
             switching_agent, acting_agents = agents
             machine = acting_agents[1]
@@ -91,10 +92,12 @@ def train(algos, trajectories, env_generator, n_episode_on: int,
 
             # save agent
             if save_agent and (ep % save_freq == 0) and (ep // save_freq > 0):
-                save_agent_cost(algo, switching_agent, machine, algos_costs[algo], 'off')
+                save_agent_cost(algo, machine, switching_agent, algos_costs[algo], 'off')
+            algos[algo] = (switching_agent, acting_agents)
         
     for ep in range(n_episode_on):
         grid_world = env_generator()
+        ep+=1
         for algo, agents in algos.items():
             switching_agent, acting_agents = agents
             machine = acting_agents[1]
@@ -109,7 +112,9 @@ def train(algos, trajectories, env_generator, n_episode_on: int,
 
             # save agent
             if save_agent and (ep % save_freq == 0) and (ep // save_freq > 0):
-                save_agent_cost(algo, switching_agent, machine, algos_costs[algo], 'on')   
+                save_agent_cost(algo, machine, switching_agent,algos_costs[algo], 'on')   
+            algos[algo] = (switching_agent, acting_agents)
+            
     
     
     

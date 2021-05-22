@@ -44,7 +44,7 @@ n_actions = 3
 # %%
 # Human 
 estimation_noise = 2.0
-switching_noise = 2.0
+switching_noise = 0.0
 c_H = 0.0
 
 # Machine
@@ -57,7 +57,7 @@ n_state_features_1hot =  env_generator.n_state_one_hot(depth, width)
 
 n_state_features = (n_state_features_strings, n_state_features_1hot)
 
-c_M = -0.2
+c_M = 0.2
 lr = 1e-4
 optimizer_fn = lambda params: RMSprop(params, lr)
 
@@ -87,8 +87,8 @@ switch_machine = MachineDriverAgent(n_state_features, n_actions, optimizer_fn, c
 # ### Train Steps
 
 # %%
-n_traj = 20000
-n_episodes = 10000
+n_traj = 50000
+n_episodes = 25000
 
 # %% [markdown]
 # ### Gather human traces
@@ -109,7 +109,10 @@ with open(f'{ROOT_DIR}/outputs/trajectories/human_{estimation_noise}_{switching_
 #     trajectories = pickle.load(file)
 # with open(f'{ROOT_DIR}/outputs/trajectories/human_{estimation_noise}_{switching_noise}_{init_traffic_level}_trajectories_{n_traj}_agent', 'rb') as file:
 #     human = pickle.load(file)
-
+# with open(f'{ROOT_DIR}/outputs/agents/pre_trained_machine/actor_agent_off', 'rb') as file:
+#     machine = pickle.load(file)
+# with open(f'{ROOT_DIR}/outputs/agents/pre_trained_machine/switching_agent_off', 'rb') as file:
+#     machine_only = pickle.load(file)
 # %% [markdown]
 # ### Evaluation Parametes
 
@@ -123,7 +126,7 @@ eval_set = [ env_generator_fn() for i in range(n_eval_set_size)]
 # ### Training
 
 # %%
-machine_only_algo = {'pre_trained_machine': (machine_only, [human, machine])}
+machine_only_algo = {'pre_trained_machine_50K_fxH': (machine_only, [human, machine])}
 machine_only_algo, machine_only_costs = train(machine_only_algo, trajectories, env_generator_fn, n_episodes, eval_set, eval_freq, save_freq)
 
 
@@ -131,6 +134,7 @@ machine_only_algo, machine_only_costs = train(machine_only_algo, trajectories, e
 
 
 
-# machine.trainable = False
-# algos = {'fixed_policies': (switch_fixed_policies,[human, machine]), 'switching':( switch_full,[human, switch_machine]) }
-# algos, algos_costs = train(algos, trajectories, env_generator_fn, n_episodes, eval_set, eval_freq, save_freq)
+machine.trainable = False
+
+algos = {'fixed_policies_50K_fxH': (switch_fixed_policies,[human, machine]), 'switching_50K_fxH':( switch_full,[human, switch_machine]) }
+algos, algos_costs = train(algos, trajectories, env_generator_fn, n_episodes, eval_set, eval_freq, save_freq)

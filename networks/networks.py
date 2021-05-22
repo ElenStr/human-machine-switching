@@ -76,8 +76,9 @@ class OptionCriticNet(Network):
         c_c_H: float
             Human control cost        
         """
+
         super(OptionCriticNet, self).__init__(n_features, 1)
-        
+      
         self.c_M = c_c_M
         self.c_H = c_c_H
         self.needs_agent_feature = True

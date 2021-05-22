@@ -39,6 +39,7 @@ class MachineDriverAgent(Agent):
         self.entropy_weight = entropy_weight
         self.control_cost = c_M
         self.trainable = True
+        self.M_t = 0
         self.n_state_features = n_state_features[0]
 
 
@@ -68,7 +69,7 @@ class MachineDriverAgent(Agent):
         log_pi =  current_policy.log_prob(torch.as_tensor(action))
         # TODO: entropy = entropy.mean() for batch update 
         entropy = current_policy.entropy()
-        policy_loss = -weighting * delta * log_pi  - self.entropy_weight*entropy
+        policy_loss = weighting * delta * log_pi  + self.entropy_weight*entropy
         # TODO: policy_loss = policy_loss.mean() for batch update
         
         self.optimizer.zero_grad()
