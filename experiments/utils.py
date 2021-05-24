@@ -55,7 +55,7 @@ def learn_evaluate(switching_agent: Agent, acting_agents, env: GridWorld,is_lear
             current_state = env.current_state()
             src = env.current_coord
 
-            d_t = switching_agent.take_action(current_state)
+            d_t = switching_agent.take_action(current_state, is_learn)
             option = acting_agents[d_t] 
             if not d_t:  
                action = option.take_action(current_state, d_tminus1)
@@ -115,16 +115,17 @@ def learn_evaluate(switching_agent: Agent, acting_agents, env: GridWorld,is_lear
 
             
                 if option.trainable:
+                    # print(policy.log_prob(policy.sample()).exp())
                     with torch.no_grad():
+                        v_tplus1 = switching_agent.target_network(next_features)
                         v_t = switching_agent.network(features)
-                        # updated d_t?
-                        d_t = switching_agent.take_action(current_state)
-
-                    delta = v_t
+                        # d_t = switching_agent.take_action(current_state)
+                
+                    delta = cost + v_tplus1 - v_t
                     if not delta:
-                        print('Vt ',v_t)
+                        print('delta ',v_tplus1,v_t)
                     
-                    if v_t !=0. and d_t==1:
+                    if delta !=0. and d_t==1:
                         option.update_policy(d_t, delta, policy, action)
                     
                         if not torch.any(list(option.network.parameters())[0].grad > 0.):
@@ -203,10 +204,12 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory , n_try=1
                 with torch.no_grad():
                     machine_pi_t = policy.probs[action].item()
                 rho = machine_pi_t / mu_t
-                
+
+                var_rho_prev = switching_agent.var_rho
+                switching_agent.F_t = 1 + var_rho_prev * switching_agent.F_t
+
                 var_pi_t = machine_pi_t if d_t else mu_t
-                var_rho = var_pi_t / mu_t
-                switching_agent.F_t = 1 + var_rho * switching_agent.F_t
+                switching_agent.var_rho = var_pi_t / mu_t
 
                 emphatic_weighting  = rho * switching_agent.F_t 
                 
@@ -217,7 +220,7 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory , n_try=1
 
                 if not emphatic_weighting:
                     print('critic emphatic')
-                    print(rho, switching_agent.F_t, var_rho)
+                    print(rho, switching_agent.F_t, var_rho_prev)
 
                 if td_error != 0. and emphatic_weighting != 0.:
                     switching_agent.update_policy(emphatic_weighting, td_error)
@@ -230,14 +233,14 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory , n_try=1
                 with torch.no_grad():
                     v_tplus1 = switching_agent.target_network(next_features)
                     v_t = switching_agent.network(features)
-                    d_t = switching_agent.take_action(current_state)
+                    # d_t = switching_agent.take_action(current_state)
                 
                 delta = cost + v_tplus1 - v_t
                 # updated dt ?
-                acting_agents[1].M_t = d_t + var_rho*acting_agents[1].M_t
+                acting_agents[1].M_t = d_t + var_rho_prev*acting_agents[1].M_t
                 emphatic_weighting = rho * acting_agents[1].M_t
                 if not emphatic_weighting:
-                    print('actor emphatic ',rho, var_rho, acting_agents[1].M_t )
+                    print('actor emphatic ',rho, var_rho_prev, acting_agents[1].M_t )
                 if not delta:
                     print('delta ',cost, v_tplus1, v_t)
 
