@@ -12,7 +12,7 @@ from plot.plot_path import HUMAN_COLOR, MACHINE_COLOR, PlotPath
  
 
 
-def learn_evaluate(switching_agent: Agent, acting_agents, env: GridWorld,is_learn: bool, ret_trajectory=False, n_try=1, plt_path=None, machine_only=False):
+def learn_evaluate(switching_agent: Agent, acting_agents, env: GridWorld,is_learn: bool, ret_trajectory=False, n_try=1, plt_path=None, machine_only=False, not_batch=True):
     """
     Learn (on policy) or evaluate overall policy in a grid environment.
 
@@ -91,7 +91,7 @@ def learn_evaluate(switching_agent: Agent, acting_agents, env: GridWorld,is_lear
                 if switching_agent.trainable:
                     next_features = state2features(next_state, switching_agent.n_state_features) 
                     with torch.no_grad():
-                        d_tplus1 = switching_agent.take_action(next_state)
+                        d_tplus1 = switching_agent.take_action(next_state,is_learn)
                         if switching_agent.network.needs_agent_feature :
                             next_features.extend(feature2onehot(d_tplus1,2))
                         v_tplus1 = switching_agent.target_network(next_features)
@@ -105,8 +105,9 @@ def learn_evaluate(switching_agent: Agent, acting_agents, env: GridWorld,is_lear
                     if td_error==0.:
                         print('TD Error')
                         print(c_tplus1,v_tplus1,v_t )
-                    if td_error != 0. :
-                        switching_agent.update_policy(1, td_error)
+                    # if td_error != 0. :
+                    switching_agent.update_policy(1, td_error,len(next_state)==1 or not_batch)
+                    if torch.is_tensor(list(switching_agent.network.parameters())[0].grad):
                         if not torch.any(list(switching_agent.network.parameters())[0].grad > 0.):
                             print('critic zero grad ')
                         if not torch.all(list(switching_agent.network.parameters())[-1].grad < 1e3):
@@ -125,9 +126,10 @@ def learn_evaluate(switching_agent: Agent, acting_agents, env: GridWorld,is_lear
                     if not delta:
                         print('delta ',v_tplus1,v_t)
                     
-                    if delta !=0. and d_t==1:
-                        option.update_policy(d_t, delta, policy, action)
+                    # if delta !=0. and d_t==1:
+                    option.update_policy(d_t, delta, policy, action, len(next_state)==1 or not_batch)
                     
+                    if torch.is_tensor(list(option.network.parameters())[0].grad):
                         if not torch.any(list(option.network.parameters())[0].grad > 0.):
                             print('actor zero grad ')
                         if not torch.all(list(option.network.parameters())[-1].grad < 1e3):
@@ -152,7 +154,7 @@ def learn_evaluate(switching_agent: Agent, acting_agents, env: GridWorld,is_lear
     return total_costs / n_try
 
 
-def learn_off_policy(switching_agent: Agent, acting_agents, trajectory , n_try=1, plt_path=None):
+def learn_off_policy(switching_agent: Agent, acting_agents, trajectory , n_try=1, plt_path=None, not_batch=True):
     """
     Learn  overall policy off-policy in a grid environment.
 
@@ -178,7 +180,7 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory , n_try=1
         for t in trajectory:
             (current_state, action, next_state, cost) = t            
 
-            d_t = switching_agent.take_action(current_state)
+            d_t = switching_agent.take_action(current_state, True)
             option = acting_agents[d_t]          
                         
             c_tplus1 = cost + option.control_cost
@@ -186,7 +188,7 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory , n_try=1
             if switching_agent.trainable:
                 next_features = state2features(next_state, switching_agent.n_state_features) 
                 with torch.no_grad():
-                    d_tplus1 = switching_agent.take_action(next_state)
+                    d_tplus1 = switching_agent.take_action(next_state, True)
                     if switching_agent.network.needs_agent_feature :                        
                         next_features.extend(feature2onehot(d_tplus1,2))
                     v_tplus1 = switching_agent.target_network(next_features)
@@ -215,15 +217,17 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory , n_try=1
                 
                 if not td_error:
                     print("TD error")
-                    print(c_tplus1, v_tplus1, v_t)                   
+                    print(c_tplus1, v_tplus1, v_t)  
+                    print(current_state, action, next_state)                 
                     
 
                 if not emphatic_weighting:
                     print('critic emphatic')
                     print(rho, switching_agent.F_t, var_rho_prev)
 
-                if td_error != 0. and emphatic_weighting != 0.:
-                    switching_agent.update_policy(emphatic_weighting, td_error)
+                # batched update no problem for td = 0
+                switching_agent.update_policy(emphatic_weighting, td_error, len(next_state)==1 or not_batch)
+                if torch.is_tensor(list(switching_agent.network.parameters())[0].grad):
                     if not torch.any(list(switching_agent.network.parameters())[0].grad > 0.):
                         print('critic zero grad ')
                     if not torch.all(list(switching_agent.network.parameters())[-1].grad < 1e3):
@@ -239,14 +243,18 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory , n_try=1
                 # updated dt ?
                 acting_agents[1].M_t = d_t + var_rho_prev*acting_agents[1].M_t
                 emphatic_weighting = rho * acting_agents[1].M_t
+                
                 if not emphatic_weighting:
                     print('actor emphatic ',rho, var_rho_prev, acting_agents[1].M_t )
                 if not delta:
                     print('delta ',cost, v_tplus1, v_t)
+                    print(current_state, action, next_state)                 
 
-                if delta!=0. and emphatic_weighting!=0.:
-                    acting_agents[1].update_policy(emphatic_weighting, delta, policy, action)
+
+                # if delta!=0. and emphatic_weighting!=0.:
+                acting_agents[1].update_policy(emphatic_weighting, delta, policy, action, len(next_state)==1 or not_batch)
                 
+                if torch.is_tensor(list(acting_agents[1].network.parameters())[0].grad):
                     if not torch.any(list(acting_agents[1].network.parameters())[0].grad > 0.):
                         print('actor zero grad')
                     if not torch.all(list(acting_agents[1].network.parameters())[-1].grad < 1e3):

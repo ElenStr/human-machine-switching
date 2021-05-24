@@ -44,6 +44,7 @@ class FixedSwitchingMachine(Agent):
         
         self.var_rho = 1
         self.trainable = True
+        self.buffer = []
 
 
     def update_obs(self, *args):
@@ -51,7 +52,7 @@ class FixedSwitchingMachine(Agent):
         pass
 
 # Need to use njit decorator?
-    def update_policy(self, weighting, td_error):
+    def update_policy(self, weighting, td_error, do_update=True):
         """
         Implement train step 
 
@@ -69,12 +70,18 @@ class FixedSwitchingMachine(Agent):
         # weighting and c'(s,a) + V(s+1) must have been computed with torch.no_grad()
         # maybe weighting needs clamp(0,1)!!!
         v_loss = td_error.pow(2).mul(0.5).mul(weighting)
+        if v_loss != 0.:
+            self.buffer.append(v_loss)
         # TODO: v_loss = v_loss.mean() for batch update
+        if do_update and len(self.buffer)>0:
+            v_loss = torch.stack(self.buffer)
+            v_loss = v_loss.mean()
 
-        self.optimizer.zero_grad()
-        v_loss.backward()
-        nn.utils.clip_grad_norm_(self.network.parameters(), 1.)
-        self.optimizer.step()
+            self.optimizer.zero_grad()
+            v_loss.backward()
+            nn.utils.clip_grad_norm_(self.network.parameters(), 1.)
+            self.optimizer.step()
+            self.buffer = []
 
 
     def take_action(self, curr_state, train):
@@ -100,6 +107,7 @@ class SwitchingAgent(Agent):
         self.var_rho = 1
 
         self.trainable = True
+        self.buffer = []
         self.n_state_features = n_state_features[0]
 
 
@@ -108,7 +116,7 @@ class SwitchingAgent(Agent):
         pass
 
 # Need to use njit decorator?
-    def update_policy(self, weighting, td_error):
+    def update_policy(self, weighting, td_error, do_update=True):
         """
         Implement train step 
 
@@ -127,11 +135,18 @@ class SwitchingAgent(Agent):
         # weighting and c'(s,a) + V(s+1) must have been computed with torch.no_grad()
         # maybe weighting needs clamp(0,1)!!!
         v_loss = td_error.pow(2).mul(0.5).mul(weighting)
-        # TODO: v_loss = v_loss.mean() for batch update
-        self.optimizer.zero_grad()
-        v_loss.backward()
-        nn.utils.clip_grad_norm_(self.network.parameters(), 1.)
-        self.optimizer.step()
+        if v_loss !=0:
+            self.buffer.append(v_loss)
+        if do_update and len(self.buffer)>0:
+            # TODO: v_loss = v_loss.mean() for batch update
+            v_loss = torch.stack(self.buffer)
+            v_loss = v_loss.mean()
+            self.optimizer.zero_grad()
+            v_loss.backward()
+            nn.utils.clip_grad_norm_(self.network.parameters(), 1.)
+            self.optimizer.step()
+            self.buffer = []
+
 
     def take_action(self, curr_state, train=True):
         """

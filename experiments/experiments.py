@@ -29,7 +29,7 @@ def evaluate(switching_agent, acting_agents, eval_set, n_try=1, plt_path=None):
 
 def train(algos, trajectories, on_line_set,
                       eval_set, eval_freq: int, save_freq: int,
-                      verbose: bool = True, save_agent: bool = True):
+                      verbose: bool = True, save_agent: bool = True, not_batched=True):
     """
     Train the switching and machine policy for different configurations
     of machine and switching agents.
@@ -79,7 +79,7 @@ def train(algos, trajectories, on_line_set,
             machine = acting_agents[1]
             
             #TODO learn off policy return sth useful maybe Q ?
-            learn_off_policy(switching_agent, acting_agents, traj)
+            learn_off_policy(switching_agent, acting_agents, traj,not_batch=not_batched)
 
             # print log
             if verbose and ep % eval_freq == 0 and (ep // eval_freq > 0):
@@ -99,7 +99,7 @@ def train(algos, trajectories, on_line_set,
             switching_agent, acting_agents = agents
             machine = acting_agents[1]
 
-            learn_evaluate(switching_agent, acting_agents, grid_world, is_learn=True)
+            learn_evaluate(switching_agent, acting_agents, grid_world, is_learn=True,not_batch=not_batched)
 
             # print log
             if verbose and ep % eval_freq == 0 and (ep // eval_freq > 0):

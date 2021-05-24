@@ -37,17 +37,21 @@ class MachineDriverAgent(Agent):
         self.network = ActorNet(n_state_features[1], n_actions)
         self.optimizer = optimizer(self.network.parameters())
         self.entropy_weight = entropy_weight
+        self.entropy_weight_0 = entropy_weight
+        self.timestep = 0
+        self.entropy_decay_freq = 200
         self.control_cost = c_M
         self.trainable = True
         self.M_t = 0
         self.n_state_features = n_state_features[0]
+        self.buffer = []
 
 
     def update_obs(self, *args):
         """Return input batch  for training"""
         pass
 
-    def update_policy(self, weighting, delta, current_policy, action):
+    def update_policy(self, weighting, delta, current_policy, action, do_update=True):
         """
         Implement train step 
 
@@ -65,18 +69,28 @@ class MachineDriverAgent(Agent):
         action: int
             The action taken
         """
+        if self.timestep % self.entropy_decay_freq ==0 and self.entropy_weight >0.0:
+            self.entropy_weight =self.entropy_weight_0* np.exp(-self.timestep)
+        self.timestep+=1
         # weighting and delta must have been computed with torch.no_grad()
         log_pi =  current_policy.log_prob(torch.as_tensor(action))
         # TODO: entropy = entropy.mean() for batch update 
         entropy = current_policy.entropy()
         policy_loss = weighting * delta * log_pi  + self.entropy_weight*entropy
         # TODO: policy_loss = policy_loss.mean() for batch update
-        
-        self.optimizer.zero_grad()
-        policy_loss.backward()
-        torch.nn.utils.clip_grad_norm_(self.network.parameters(), 1.)
+        if policy_loss != 0.0:
+            self.buffer.append(policy_loss)
+        if do_update and len(self.buffer)>0:
+            policy_loss = torch.stack(self.buffer)
+            policy_loss = policy_loss.mean()
+            
+            self.optimizer.zero_grad()
+            policy_loss.backward()
+            torch.nn.utils.clip_grad_norm_(self.network.parameters(), 1.)
+            
+            self.optimizer.step()
 
-        self.optimizer.step()
+            self.buffer = []
 
 
     def take_action(self, curr_state):
@@ -164,4 +178,32 @@ class NoisyDriverAgent(Agent):
         return action
 
 
+class RandomDriverAgent(Agent):
+    def __init__(self):
+        """A random driver """
+        super(RandomDriverAgent, self).__init__()
+        
+        self.trainable = False
+        self.control_cost = 0.0
+        
+        self.policy_approximation = defaultdict(dd_init)
 
+    def update_policy(self, state, action):
+        """Update policy approximation, needed for the off policy stage"""
+        # The human action in reality depends only on next row
+        human_obs = tuple(state[2:5] )
+        self.policy_approximation[human_obs][action]+=1
+            
+    def get_policy_approximation(self, state, action):
+        """ The approximated action policy distribution given the state """
+        human_obs = tuple(state[2:5] )
+        total_state_visit = sum(self.policy_approximation[human_obs])
+        p_human_a_s = self.policy_approximation[human_obs][action] / total_state_visit
+        return p_human_a_s
+
+
+    def take_action(self, curr_state, switch=False):
+        
+                
+        action = random.randint(0,2)
+        return action
