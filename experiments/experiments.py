@@ -27,7 +27,7 @@ def evaluate(switching_agent, acting_agents, eval_set, n_try=1, plt_path=None):
     return np.mean(eval_costs)
 
 
-def train(algos, trajectories, env_generator, n_episode_on: int,
+def train(algos, trajectories, on_line_set,
                       eval_set, eval_freq: int, save_freq: int,
                       verbose: bool = True, save_agent: bool = True):
     """
@@ -43,12 +43,9 @@ def train(algos, trajectories, env_generator, n_episode_on: int,
         The trajectories induced by the human acting alone, 
         needed for the off-policy stage.
 
-    env_generator: lambda: environment.generate_gridworld(args)
-        The gridworld generator for the on-policy stage
+    on_line_set: list of Gridworld 
+        The lis of gridworlds to be used in the on-line training
     
-    n_episode_on: int
-        Number of episodes in the on-policy stage
-
     eval_set:
         Evaluation set of environments to keep track on training progress
 
@@ -95,8 +92,8 @@ def train(algos, trajectories, env_generator, n_episode_on: int,
                 save_agent_cost(algo, machine, switching_agent, algos_costs[algo], 'off')
             algos[algo] = (switching_agent, acting_agents)
         
-    for ep in range(n_episode_on):
-        grid_world = env_generator()
+    for ep,grid_world in enumerate(on_line_set):
+        
         ep+=1
         for algo, agents in algos.items():
             switching_agent, acting_agents = agents
