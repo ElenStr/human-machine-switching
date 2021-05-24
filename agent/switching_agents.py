@@ -23,7 +23,7 @@ class FixedSwitchingHuman(Agent):
         super(FixedSwitchingHuman, self).__init__()
         self.trainable = False
         
-    def take_action(self, state):
+    def take_action(self, state, train):
         return 0
 
 class FixedSwitchingMachine(Agent):
@@ -41,6 +41,8 @@ class FixedSwitchingMachine(Agent):
         self.optimizer = optimizer(self.network.parameters())
         self.n_state_features = n_state_features[0]
         self.F_t=0
+        
+        self.var_rho = 1
         self.trainable = True
 
 
@@ -75,7 +77,7 @@ class FixedSwitchingMachine(Agent):
         self.optimizer.step()
 
 
-    def take_action(self, curr_state):
+    def take_action(self, curr_state, train):
         return 1
 
 
@@ -95,6 +97,8 @@ class SwitchingAgent(Agent):
         self.timesteps = 0
         self.epsilon = eps
         self.F_t=0
+        self.var_rho = 1
+
         self.trainable = True
         self.n_state_features = n_state_features[0]
 
@@ -129,7 +133,7 @@ class SwitchingAgent(Agent):
         nn.utils.clip_grad_norm_(self.network.parameters(), 1.)
         self.optimizer.step()
 
-    def take_action(self, curr_state):
+    def take_action(self, curr_state, train=True):
         """
         Return the switching decision given the current state 
 
@@ -148,9 +152,10 @@ class SwitchingAgent(Agent):
          
         human_option_value = self.network(state_feature_vector + [0.,1.]).detach().item()
         machine_option_value = self.network(state_feature_vector + [1.,0.]).detach().item()
-        # epsilon greedy
+        # epsilon greedy only when training
         p = random.random()
-        if p < 1- self.epsilon:
+        epsilon = self.epsilon if train else 0.0
+        if p < 1- epsilon:
             switch = np.argmin([human_option_value, machine_option_value]).flatten()[0]
         else:
             switch = random.choices([0, 1], [.5, .5])[0]
