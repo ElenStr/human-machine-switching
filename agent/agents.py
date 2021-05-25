@@ -7,7 +7,7 @@ import math
 import torch
 from collections import defaultdict
 
-from environments.env import Environment
+from environments.env import Environment, GridWorld
 from environments.utils_env import state2features
 from networks.networks import ActorNet
 from copy import copy
@@ -207,3 +207,66 @@ class RandomDriverAgent(Agent):
                 
         action = random.randint(0,2)
         return action
+
+
+class OptimalAgent():
+    def __init__(self, env: GridWorld, control_cost):        
+        self.env = env
+        self.control_cost = control_cost
+        self.p = np.zeros(shape=(self.env.width,self.env.height, 3, self.env.width,self.env.height)) 
+        for y in range(self.env.height):
+            for x in range(self.env.width):
+                for a in range(3):
+                    nxt_x,nxt_y = self.env.next_coords(x,y,a)
+                    self.p[x,y,a,nxt_x,nxt_y] = 1.
+
+        self.policy = self.val_itr()
+
+    def take_action(self, time, coords):
+        x,y = coords
+        return random.choices(range(3), self.policy[time][x][y])[0]
+    
+    def eval(self, n_try=1, plt_path=None):
+        total_cost = []
+        for i in range(n_try):
+            self.env.reset()
+            traj_cost = 0
+            time = 0
+            while True:
+                cur_coords = self.env.current_coord
+                action = self.take_action(time, cur_coords)
+                _, cost, finished = self.env.step(action)
+                if finished:
+                    break
+                traj_cost+=cost + self.control_cost
+                if plt_path is not None:
+                    plt_path.add_line(cur_coords, self.env.current_coord, 'red')
+            total_cost.append(traj_cost)
+        
+        return np.mean(total_cost)
+
+   
+    def val_itr(self):
+        ep_l = self.env.height
+        n_ac = 3
+        # q_val[time][state][action]
+        q_val = np.zeros(shape=(ep_l, self.env.width,self.env.height, n_ac))
+        # q_min[time][state]
+        q_min = np.zeros(shape=(ep_l + 1, self.env.width,self.env.height))
+
+        # policy[time][state][action]
+        policy = np.zeros(shape=(ep_l, self.env.width,self.env.height,  n_ac))
+
+        for i in range(ep_l):
+            t = ep_l - i - 1
+            for y in range(self.env.height):
+                for x in range(self.env.width):
+                    for a in range(n_ac):
+                        nxt_x,nxt_y = self.env.next_coords(x,y,a)
+                        q_val[t][x][y][a] = self.env.type_costs[self.env.cell_types[nxt_x,nxt_y]] + np.sum(self.p[x,y,a]* q_min[t + 1])
+
+                    best_actions = np.where(q_val[t][x][y] == np.min(q_val[t][x][y]))[0]
+                    policy[t][x,y][best_actions] = 1 / len(best_actions)
+                    q_min[t][x][y] = np.min(q_val[t][x][y])
+
+        return policy
