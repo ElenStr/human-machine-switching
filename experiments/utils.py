@@ -39,7 +39,7 @@ def learn_evaluate(switching_agent: Agent, acting_agents, env: GridWorld,is_lear
     total_cost : int
         Average total cost of the trajectory
     """
-    total_costs = 0
+    total_costs = []
     
     if ret_trajectory:
         trajectory = []
@@ -50,6 +50,7 @@ def learn_evaluate(switching_agent: Agent, acting_agents, env: GridWorld,is_lear
         env.reset()
         d_tminus1 = 0
         timestep = 0
+        trajectory_cost = 0
         while True:
             timestep+=1
             current_state = env.current_state()
@@ -137,12 +138,12 @@ def learn_evaluate(switching_agent: Agent, acting_agents, env: GridWorld,is_lear
 
 
 
-            total_costs += c_tplus1            
+            trajectory_cost += c_tplus1            
 
             if plt_path is not None:               
                 clr = MACHINE_COLOR if d_t else HUMAN_COLOR
                 plt_path.add_line(src, dst, clr)
-    
+        total_costs.append(trajectory_cost)
     if human_cf_costs:
         key = np.argmin(human_cf_costs)
         for src, dst in human_cf_lines[key][:-1]:
@@ -151,7 +152,7 @@ def learn_evaluate(switching_agent: Agent, acting_agents, env: GridWorld,is_lear
         return trajectory
                     
 
-    return total_costs / n_try
+    return np.mean(total_costs)
 
 
 def learn_off_policy(switching_agent: Agent, acting_agents, trajectory , n_try=1, plt_path=None, not_batch=True):

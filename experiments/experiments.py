@@ -18,7 +18,7 @@ def save_agent_cost(name, actor, critic, costs, on_off):
         with open(f'{ROOT_DIR}/outputs/agents/{name}/costs_'+on_off, 'wb') as file:
             pickle.dump(costs, file, pickle.HIGHEST_PROTOCOL)
 
-def evaluate(switching_agent, acting_agents, eval_set, n_try=1, plt_path=None):
+def evaluate(switching_agent, acting_agents, eval_set, n_try=10, plt_path=None):
     eval_costs = []
     for grid in eval_set:
         cost = learn_evaluate(switching_agent, acting_agents, grid, is_learn=False, ret_trajectory=False, n_try=n_try, plt_path=plt_path)
@@ -29,7 +29,8 @@ def evaluate(switching_agent, acting_agents, eval_set, n_try=1, plt_path=None):
 
 def train(algos, trajectories, on_line_set,
                       eval_set, eval_freq: int, save_freq: int,
-                      verbose: bool = True, save_agent: bool = True, not_batched=True):
+                      verbose: bool = True, save_agent: bool = True, 
+                      not_batched=True, eval_tries=1):
     """
     Train the switching and machine policy for different configurations
     of machine and switching agents.
@@ -83,7 +84,7 @@ def train(algos, trajectories, on_line_set,
 
             # print log
             if verbose and ep % eval_freq == 0 and (ep // eval_freq > 0):
-                eval_cost = evaluate(switching_agent, acting_agents, eval_set)
+                eval_cost = evaluate(switching_agent, acting_agents, eval_set, n_try=eval_tries)
                 print(f'{datetime.datetime.now()}, Off-policy, Episode {ep}, {algo} evaluation cost: {eval_cost}')
                 algos_costs[algo].append(eval_cost) 
 
@@ -103,7 +104,7 @@ def train(algos, trajectories, on_line_set,
 
             # print log
             if verbose and ep % eval_freq == 0 and (ep // eval_freq > 0):
-                eval_cost = evaluate(switching_agent, acting_agents, eval_set)
+                eval_cost = evaluate(switching_agent, acting_agents, eval_set,n_try=eval_tries)
                 print(f'{datetime.datetime.now()}, On-policy, Episode {ep}, {algo}  evaluation cost: {eval_cost}')
                 algos_costs[algo].append(eval_cost)
 
