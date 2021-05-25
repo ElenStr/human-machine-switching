@@ -70,7 +70,7 @@ epsilon = 0.1
 # %%
 human  = NoisyDriverAgent(env_generator, noise_sd=estimation_noise, noise_sw=switching_noise, c_H=c_H)
 
-machine = MachineDriverAgent(n_state_features, n_actions, optimizer_fn, c_M=c_M)
+machine = MachineDriverAgent(n_state_features, n_actions, optimizer_fn, c_M=c_M, entropy_weight=0.01)
 
 machine_only = FixedSwitchingMachine(n_state_features, optimizer_fn, c_M=c_M)
 
@@ -81,60 +81,101 @@ switch_fixed_policies = SwitchingAgent(n_state_features, optimizer_fn, c_M=c_M, 
 # same initialisation
 switch_full = SwitchingAgent(n_state_features, optimizer_fn, c_M=c_M, c_H=c_H, eps=epsilon)
 # must be deepcopy of machine before training
-switch_machine = MachineDriverAgent(n_state_features, n_actions, optimizer_fn, c_M=c_M)
+switch_machine = MachineDriverAgent(n_state_features, n_actions, optimizer_fn, c_M=c_M, entropy_weight=0.01)
 
 # %% [markdown]
 # ### Train Steps
 
 # %%
 n_traj = 50000
-n_episodes = 25000
+n_episodes = 50000
 
 # %% [markdown]
 # ### Gather human traces
-
+# human = RandomDriverAgent()
+# trajectories = gather_human_trajectories(human, env_generator, n_traj,**env_params)
+# # save for later
+# with open(f'{ROOT_DIR}/outputs/trajectories/random_human_{init_traffic_level}_trajectories_{n_traj}', 'wb') as file:
+#     pickle.dump(trajectories, file, pickle.HIGHEST_PROTOCOL)
+# with open(f'{ROOT_DIR}/outputs/trajectories/random_human_{init_traffic_level}_trajectories_{n_traj}_agent', 'wb') as file:
+#     pickle.dump(human, file, pickle.HIGHEST_PROTOCOL) 
 # %%
 # gather human trajectories
-trajectories = gather_human_trajectories(human, env_generator, n_traj,**env_params)
-# save for later
-with open(f'{ROOT_DIR}/outputs/trajectories/human_{estimation_noise}_{switching_noise}_{init_traffic_level}_trajectories_{n_traj}', 'wb') as file:
-    pickle.dump(trajectories, file, pickle.HIGHEST_PROTOCOL)
-with open(f'{ROOT_DIR}/outputs/trajectories/human_{estimation_noise}_{switching_noise}_{init_traffic_level}_trajectories_{n_traj}_agent', 'wb') as file:
-    pickle.dump(human, file, pickle.HIGHEST_PROTOCOL)    
+# trajectories = gather_human_trajectories(human, env_generator, n_traj,**env_params)
+# # save for later
+# with open(f'{ROOT_DIR}/outputs/trajectories/human_{estimation_noise}_{switching_noise}_{init_traffic_level}_trajectories_{n_traj}', 'wb') as file:
+#     pickle.dump(trajectories, file, pickle.HIGHEST_PROTOCOL)
+# with open(f'{ROOT_DIR}/outputs/trajectories/human_{estimation_noise}_{switching_noise}_{init_traffic_level}_trajectories_{n_traj}_agent', 'wb') as file:
+#     pickle.dump(human, file, pickle.HIGHEST_PROTOCOL)    
 
+# on_line_set = [env_generator_fn() for i in range(n_episodes)]
+# with open(f'{ROOT_DIR}/outputs/on_line_set_{n_episodes}_{init_traffic_level}', 'wb') as file:
+#     pickle.dump(on_line_set, file, pickle.HIGHEST_PROTOCOL)
 
 # %%
 
-# with open(f'{ROOT_DIR}/outputs/trajectories/human_{estimation_noise}_{switching_noise}_{init_traffic_level}_trajectories_{n_traj}', 'rb') as file:
-#     trajectories = pickle.load(file)
-# with open(f'{ROOT_DIR}/outputs/trajectories/human_{estimation_noise}_{switching_noise}_{init_traffic_level}_trajectories_{n_traj}_agent', 'rb') as file:
-#     human = pickle.load(file)
-# with open(f'{ROOT_DIR}/outputs/agents/pre_trained_machine/actor_agent_off', 'rb') as file:
+with open(f'{ROOT_DIR}/outputs/on_line_set_{n_episodes}_{init_traffic_level}', 'rb') as file:
+    on_line_set = pickle.load(file)
+
+with open(f'{ROOT_DIR}/outputs/trajectories/human_{estimation_noise}_{switching_noise}_{init_traffic_level}_trajectories_{n_traj}', 'rb') as file:
+    trajectories = pickle.load(file)
+with open(f'{ROOT_DIR}/outputs/trajectories/human_{estimation_noise}_{switching_noise}_{init_traffic_level}_trajectories_{n_traj}_agent', 'rb') as file:
+    human = pickle.load(file)
+# with open(f'{ROOT_DIR}/outputs/agents/machine_only_50K_2L/actor_agent_off', 'rb') as file:
 #     machine = pickle.load(file)
-# with open(f'{ROOT_DIR}/outputs/agents/pre_trained_machine/switching_agent_off', 'rb') as file:
+# with open(f'{ROOT_DIR}/outputs/agents/machine_only_50K_2L/switching_agent_off', 'rb') as file:
 #     machine_only = pickle.load(file)
 # %% [markdown]
 # ### Evaluation Parametes
-
 # %%
+
+
 n_eval_set_size = 1000
 eval_freq = 1000
 save_freq = 5000
-eval_set = [ env_generator_fn() for i in range(n_eval_set_size)]
+# # eval_set = [ env_generator_fn() for i in range(n_eval_set_size)]
+# # with open(f'{ROOT_DIR}/outputs/eval_set', 'wb')as file:
+# #     pickle.dump(eval_set, file, pickle.HIGHEST_PROTOCOL)
+with open(f'{ROOT_DIR}/outputs/eval_set', 'rb') as file:
+    eval_set = pickle.load(file)
 
-# %% [markdown]
-# ### Training
+# human_cost = evaluate(human_only, [human], eval_set)
+# with open(f'{ROOT_DIR}/outputs/trajectories/random_human_{estimation_noise}_{switching_noise}_{init_traffic_level}_cost', 'wb') as file :
+#     pickle.dump(human_cost, file, pickle.HIGHEST_PROTOCOL)
+# human_cost = evaluate(human_only, [human], eval_set)
+# with open(f'{ROOT_DIR}/outputs/trajectories/human_{estimation_noise}_{switching_noise}_{init_traffic_level}_cost', 'wb') as file :
+#     pickle.dump(human_cost, file, pickle.HIGHEST_PROTOCOL)
+with open(f'{ROOT_DIR}/outputs/trajectories/human_{estimation_noise}_{switching_noise}_{init_traffic_level}_cost', 'rb') as file :
+    human_cost = pickle.load (file)
+print(f'Human cost {human_cost}')
+# # %% [markdown]
+# # ### Training
+# for i in range(50000):
+#     on_line_set.append(env_generator_fn())
+# with open(f'{ROOT_DIR}/outputs/on_line_set_100000_{init_traffic_level}', 'wb') as file:
+#     pickle.dump(on_line_set, file, pickle.HIGHEST_PROTOCOL)
+# # %%
+# machine.entropy_weight = 0.0
+# machine_only_algo = {'machine_only_50K-50K': (machine_only, [human, machine])}
+# machine_only_algo, machine_only_costs = train(machine_only_algo, trajectories, [], eval_set, eval_freq, save_freq, not_batched=False)
 
-# %%
-machine_only_algo = {'pre_trained_machine_50K_fxH': (machine_only, [human, machine])}
-machine_only_algo, machine_only_costs = train(machine_only_algo, trajectories, env_generator_fn, n_episodes, eval_set, eval_freq, save_freq)
+# machine.trainable = False
+# algos = {'fixed_policies_50K-50K': (switch_fixed_policies,[human, machine])}
+# algos, algos_costs = train(algos, trajectories, on_line_set, eval_set, eval_freq, save_freq, not_batched=False,eval_tries=5)
 
+# machine.trainable = True
+# machine.entropy_weight = 0.01
+# machine.entropy_weight_0 = 0.01
+# machine.timestep = 0
+# machine_only_algo = {'machine_only_50K-50K': (machine_only, [human, machine])}
+# machine_only_algo, machine_only_costs = train(machine_only_algo, [], on_line_set, eval_set, eval_freq, save_freq, not_batched=False)
+# # # # %%
+switch_machine.entropy_weight = 0.0
+algos =  { 'switching_50K-50K':( switch_full,[human, switch_machine]) }
+algos, algos_costs = train(algos, trajectories, [], eval_set, eval_freq, save_freq, not_batched=False,eval_tries=5)
 
-# %%
-
-
-
-machine.trainable = False
-
-algos = {'fixed_policies_50K_fxH': (switch_fixed_policies,[human, machine]), 'switching_50K_fxH':( switch_full,[human, switch_machine]) }
-algos, algos_costs = train(algos, trajectories, env_generator_fn, n_episodes, eval_set, eval_freq, save_freq)
+switch_machine.entropy_weight = 0.01
+switch_machine.entropy_weight_0 = 0.01
+switch_machine.timestep = 0
+algos =  { 'switching_50K-50K':( switch_full,[human, switch_machine]) }
+algos, algos_costs = train(algos, [], on_line_set, eval_set, eval_freq, save_freq, not_batched=False,eval_tries=5)
