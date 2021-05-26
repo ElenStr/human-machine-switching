@@ -31,7 +31,7 @@ class Agent:
         """Return an action based on the policy"""
 
 class MachineDriverAgent(Agent):
-    def __init__(self, n_state_features, n_actions, optimizer, c_M=0., entropy_weight=0.01):
+    def __init__(self, n_state_features, n_actions, optimizer, c_M=0., entropy_weight=0.01, batch_size=1):
         """Initialize network and hyperparameters"""
         super(MachineDriverAgent, self).__init__()
         self.network = ActorNet(n_state_features[1], n_actions)
@@ -42,16 +42,15 @@ class MachineDriverAgent(Agent):
         self.entropy_decay_freq = 200
         self.control_cost = c_M
         self.trainable = True
-        self.M_t = 0
+        self.M_t = np.zeros(batch_size)
         self.n_state_features = n_state_features[0]
-        self.buffer = []
 
 
     def update_obs(self, *args):
         """Return input batch  for training"""
         pass
 
-    def update_policy(self, weighting, delta, current_policy, action, do_update=True):
+    def update_policy(self, weighting, delta, log_pi, entropy, do_update=True):
         """
         Implement train step 
 
@@ -70,27 +69,24 @@ class MachineDriverAgent(Agent):
             The action taken
         """
         if self.timestep % self.entropy_decay_freq ==0 and self.entropy_weight >0.0:
+            
             self.entropy_weight =self.entropy_weight_0* np.exp(-self.timestep)
         self.timestep+=1
         # weighting and delta must have been computed with torch.no_grad()
-        log_pi =  current_policy.log_prob(torch.as_tensor(action))
-        # TODO: entropy = entropy.mean() for batch update 
-        entropy = current_policy.entropy()
+        # log_pi =  current_policy.log_prob(action)
+        # # TODO: entropy = entropy.mean() for batch update 
+        # entropy = current_policy.entropy()
         policy_loss = weighting * delta * log_pi  + self.entropy_weight*entropy
         # TODO: policy_loss = policy_loss.mean() for batch update
-        if policy_loss != 0.0:
-            self.buffer.append(policy_loss)
-        if do_update and len(self.buffer)>0:
-            policy_loss = torch.stack(self.buffer)
-            policy_loss = policy_loss.mean()
-            
-            self.optimizer.zero_grad()
-            policy_loss.backward()
-            torch.nn.utils.clip_grad_norm_(self.network.parameters(), 1.)
-            
-            self.optimizer.step()
+        
+        policy_loss = policy_loss.mean()
+        
+        self.optimizer.zero_grad()
+        policy_loss.backward()
+        torch.nn.utils.clip_grad_norm_(self.network.parameters(), 1.)
+        
+        self.optimizer.step()
 
-            self.buffer = []
 
 
     def take_action(self, curr_state):
@@ -205,7 +201,7 @@ class RandomDriverAgent(Agent):
     def take_action(self, curr_state, switch=False):
         
                 
-        action = random.randint(0,2)
+        action = random.choices(range(3), [1/3, 1/3, 1/3])[0]
         return action
 
 

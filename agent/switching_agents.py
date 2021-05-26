@@ -30,7 +30,7 @@ class FixedSwitchingMachine(Agent):
     """
     Switching policy chooses always machine
     """
-    def __init__(self, n_state_features, optimizer, c_M):
+    def __init__(self, n_state_features, optimizer, c_M, batch_size=1):
         """Initialize network and hyperparameters"""
         super(FixedSwitchingMachine, self).__init__()
         self.network = CriticNet(n_state_features[1], c_M)
@@ -40,11 +40,10 @@ class FixedSwitchingMachine(Agent):
         self.timesteps = 0
         self.optimizer = optimizer(self.network.parameters())
         self.n_state_features = n_state_features[0]
-        self.F_t=0
+        self.F_t= np.zeros(batch_size)
         
-        self.var_rho = 1
+        self.var_rho = np.ones(batch_size)
         self.trainable = True
-        self.buffer = []
 
 
     def update_obs(self, *args):
@@ -70,18 +69,13 @@ class FixedSwitchingMachine(Agent):
         # weighting and c'(s,a) + V(s+1) must have been computed with torch.no_grad()
         # maybe weighting needs clamp(0,1)!!!
         v_loss = td_error.pow(2).mul(0.5).mul(weighting)
-        if v_loss != 0.:
-            self.buffer.append(v_loss)
         # TODO: v_loss = v_loss.mean() for batch update
-        if do_update and len(self.buffer)>0:
-            v_loss = torch.stack(self.buffer)
-            v_loss = v_loss.mean()
+        v_loss = v_loss.mean()
 
-            self.optimizer.zero_grad()
-            v_loss.backward()
-            nn.utils.clip_grad_norm_(self.network.parameters(), 1.)
-            self.optimizer.step()
-            self.buffer = []
+        self.optimizer.zero_grad()
+        v_loss.backward()
+        nn.utils.clip_grad_norm_(self.network.parameters(), 1.)
+        self.optimizer.step()
 
 
     def take_action(self, curr_state, train):
@@ -92,7 +86,7 @@ class SwitchingAgent(Agent):
     """
     Switching policy chooses always machine
     """
-    def __init__(self, n_state_features, optimizer, c_M, c_H, eps=.01):
+    def __init__(self, n_state_features, optimizer, c_M, c_H, eps=.01, batch_size=1):
         """Initialize network and hyperparameters"""
         super(SwitchingAgent, self).__init__()
         # TODO: change  n_state_features+1 for 1-hot encoding  
@@ -103,11 +97,11 @@ class SwitchingAgent(Agent):
         self.target_update_freq = 200
         self.timesteps = 0
         self.epsilon = eps
-        self.F_t=0
-        self.var_rho = 1
+        self.F_t= np.zeros(batch_size)
+        
+        self.var_rho = np.ones(batch_size)
 
         self.trainable = True
-        self.buffer = []
         self.n_state_features = n_state_features[0]
 
 
@@ -135,17 +129,14 @@ class SwitchingAgent(Agent):
         # weighting and c'(s,a) + V(s+1) must have been computed with torch.no_grad()
         # maybe weighting needs clamp(0,1)!!!
         v_loss = td_error.pow(2).mul(0.5).mul(weighting)
-        if v_loss !=0:
-            self.buffer.append(v_loss)
-        if do_update and len(self.buffer)>0:
+        
             # TODO: v_loss = v_loss.mean() for batch update
-            v_loss = torch.stack(self.buffer)
-            v_loss = v_loss.mean()
-            self.optimizer.zero_grad()
-            v_loss.backward()
-            nn.utils.clip_grad_norm_(self.network.parameters(), 1.)
-            self.optimizer.step()
-            self.buffer = []
+        
+        v_loss = v_loss.mean()
+        self.optimizer.zero_grad()
+        v_loss.backward()
+        nn.utils.clip_grad_norm_(self.network.parameters(), 1.)
+        self.optimizer.step()
 
 
     def take_action(self, curr_state, train=True):

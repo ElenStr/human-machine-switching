@@ -48,7 +48,7 @@ switching_noise = 0.0
 c_H = 0.0
 
 # Machine
-
+batch_size = 5
 # state size with string features
 n_state_features_strings = env_generator.n_state_strings(depth, width)
 
@@ -70,18 +70,18 @@ epsilon = 0.1
 # %%
 human  = NoisyDriverAgent(env_generator, noise_sd=estimation_noise, noise_sw=switching_noise, c_H=c_H)
 
-machine = MachineDriverAgent(n_state_features, n_actions, optimizer_fn, c_M=c_M, entropy_weight=0.01)
+machine = MachineDriverAgent(n_state_features, n_actions, optimizer_fn, c_M=c_M, entropy_weight=0.01, batch_size=batch_size)
 
-machine_only = FixedSwitchingMachine(n_state_features, optimizer_fn, c_M=c_M)
+machine_only = FixedSwitchingMachine(n_state_features, optimizer_fn, c_M=c_M, batch_size=batch_size)
 
 human_only = FixedSwitchingHuman()
 
-switch_fixed_policies = SwitchingAgent(n_state_features, optimizer_fn, c_M=c_M, c_H=c_H, eps=epsilon)
+switch_fixed_policies = SwitchingAgent(n_state_features, optimizer_fn, c_M=c_M, c_H=c_H, eps=epsilon, batch_size=batch_size)
 
 # same initialisation
-switch_full = SwitchingAgent(n_state_features, optimizer_fn, c_M=c_M, c_H=c_H, eps=epsilon)
+switch_full = SwitchingAgent(n_state_features, optimizer_fn, c_M=c_M, c_H=c_H, eps=epsilon, batch_size=batch_size)
 # must be deepcopy of machine before training
-switch_machine = MachineDriverAgent(n_state_features, n_actions, optimizer_fn, c_M=c_M, entropy_weight=0.01)
+switch_machine = MachineDriverAgent(n_state_features, n_actions, optimizer_fn, c_M=c_M, entropy_weight=0.01, batch_size=batch_size)
 
 # %% [markdown]
 # ### Train Steps
@@ -92,13 +92,13 @@ n_episodes = 50000
 
 # %% [markdown]
 # ### Gather human traces
-# human = RandomDriverAgent()
-# trajectories = gather_human_trajectories(human, env_generator, n_traj,**env_params)
+human = RandomDriverAgent()
+trajectories = gather_human_trajectories(human, env_generator, n_traj,**env_params)
 # # save for later
-# with open(f'{ROOT_DIR}/outputs/trajectories/random_human_{init_traffic_level}_trajectories_{n_traj}', 'wb') as file:
-#     pickle.dump(trajectories, file, pickle.HIGHEST_PROTOCOL)
-# with open(f'{ROOT_DIR}/outputs/trajectories/random_human_{init_traffic_level}_trajectories_{n_traj}_agent', 'wb') as file:
-#     pickle.dump(human, file, pickle.HIGHEST_PROTOCOL) 
+with open(f'{ROOT_DIR}/outputs/trajectories/random_human_{init_traffic_level}_trajectories_{n_traj}', 'wb') as file:
+    pickle.dump(trajectories, file, pickle.HIGHEST_PROTOCOL)
+with open(f'{ROOT_DIR}/outputs/trajectories/random_human_{init_traffic_level}_trajectories_{n_traj}_agent', 'wb') as file:
+    pickle.dump(human, file, pickle.HIGHEST_PROTOCOL) 
 # %%
 # gather human trajectories
 # trajectories = gather_human_trajectories(human, env_generator, n_traj,**env_params)
@@ -117,10 +117,10 @@ n_episodes = 50000
 with open(f'{ROOT_DIR}/outputs/on_line_set_{n_episodes}_{init_traffic_level}', 'rb') as file:
     on_line_set = pickle.load(file)
 
-with open(f'{ROOT_DIR}/outputs/trajectories/human_{estimation_noise}_{switching_noise}_{init_traffic_level}_trajectories_{n_traj}', 'rb') as file:
-    trajectories = pickle.load(file)
-with open(f'{ROOT_DIR}/outputs/trajectories/human_{estimation_noise}_{switching_noise}_{init_traffic_level}_trajectories_{n_traj}_agent', 'rb') as file:
-    human = pickle.load(file)
+# with open(f'{ROOT_DIR}/outputs/trajectories/human_{estimation_noise}_{switching_noise}_{init_traffic_level}_trajectories_{n_traj}', 'rb') as file:
+#     trajectories = pickle.load(file)
+# with open(f'{ROOT_DIR}/outputs/trajectories/human_{estimation_noise}_{switching_noise}_{init_traffic_level}_trajectories_{n_traj}_agent', 'rb') as file:
+#     human = pickle.load(file)
 # with open(f'{ROOT_DIR}/outputs/agents/machine_only_50K_2L/actor_agent_off', 'rb') as file:
 #     machine = pickle.load(file)
 # with open(f'{ROOT_DIR}/outputs/agents/machine_only_50K_2L/switching_agent_off', 'rb') as file:
@@ -131,8 +131,8 @@ with open(f'{ROOT_DIR}/outputs/trajectories/human_{estimation_noise}_{switching_
 
 
 n_eval_set_size = 1000
-eval_freq = 1000
-save_freq = 5000
+eval_freq = 1000//batch_size
+save_freq = 5000//batch_size
 # # eval_set = [ env_generator_fn() for i in range(n_eval_set_size)]
 # # with open(f'{ROOT_DIR}/outputs/eval_set', 'wb')as file:
 # #     pickle.dump(eval_set, file, pickle.HIGHEST_PROTOCOL)
@@ -155,27 +155,22 @@ print(f'Human cost {human_cost}')
 # with open(f'{ROOT_DIR}/outputs/on_line_set_100000_{init_traffic_level}', 'wb') as file:
 #     pickle.dump(on_line_set, file, pickle.HIGHEST_PROTOCOL)
 # # %%
-# machine.entropy_weight = 0.0
-# machine_only_algo = {'machine_only_50K-50K': (machine_only, [human, machine])}
-# machine_only_algo, machine_only_costs = train(machine_only_algo, trajectories, [], eval_set, eval_freq, save_freq, not_batched=False)
+
+machine_only_algo = {'machine_off_rnd_human': (machine_only, [human, machine])}
+machine_only_algo, machine_only_costs = train(machine_only_algo, trajectories, [], eval_set, eval_freq, save_freq, batch_size=batch_size)
 
 # machine.trainable = False
-# algos = {'fixed_policies_50K-50K': (switch_fixed_policies,[human, machine])}
-# algos, algos_costs = train(algos, trajectories, on_line_set, eval_set, eval_freq, save_freq, not_batched=False,eval_tries=5)
+# algos = {'fixed_policies_50K': (switch_fixed_policies,[human, machine])}
+# algos, algos_costs = train(algos, trajectories, [], eval_set, eval_freq, save_freq, batch_size=batch_size,eval_tries=5)
 
-# machine.trainable = True
-# machine.entropy_weight = 0.01
-# machine.entropy_weight_0 = 0.01
-# machine.timestep = 0
+
 # machine_only_algo = {'machine_only_50K-50K': (machine_only, [human, machine])}
 # machine_only_algo, machine_only_costs = train(machine_only_algo, [], on_line_set, eval_set, eval_freq, save_freq, not_batched=False)
 # # # # %%
-switch_machine.entropy_weight = 0.0
-algos =  { 'switching_50K-50K':( switch_full,[human, switch_machine]) }
-algos, algos_costs = train(algos, trajectories, [], eval_set, eval_freq, save_freq, not_batched=False,eval_tries=5)
 
-switch_machine.entropy_weight = 0.01
-switch_machine.entropy_weight_0 = 0.01
-switch_machine.timestep = 0
-algos =  { 'switching_50K-50K':( switch_full,[human, switch_machine]) }
-algos, algos_costs = train(algos, [], on_line_set, eval_set, eval_freq, save_freq, not_batched=False,eval_tries=5)
+# algos =  { 'switching_50K':( switch_full,[human, switch_machine]) }
+# algos, algos_costs = train(algos, trajectories, [], eval_set, eval_freq, save_freq, batch_size=batch_size,eval_tries=5)
+
+
+# algos =  { 'switching_50K-50K':( switch_full,[human, switch_machine]) }
+# algos, algos_costs = train(algos, [], on_line_set, eval_set, eval_freq, save_freq, not_batched=False,eval_tries=5)
