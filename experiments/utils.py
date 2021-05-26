@@ -60,14 +60,14 @@ def learn_evaluate(switching_agent: Agent, acting_agents, envs ,is_learn: bool, 
             costs_for_delta = []
             v_tplus1_inp = []
             v_t_inp = []
-            for env in envs:
+            for b,env in enumerate(envs):
                 current_state = env.current_state()
                 src = env.current_coord
 
                 d_t = switching_agent.take_action(current_state, is_learn)
                 option = acting_agents[d_t] 
                 if not d_t:  
-                    action = option.take_action(current_state, d_tminus1)
+                    action = option.take_action(current_state, d_tminus1[b])
                 else:
                     action, policy = option.take_action(current_state)
                     if plt_path is not None:
@@ -85,7 +85,7 @@ def learn_evaluate(switching_agent: Agent, acting_agents, envs ,is_learn: bool, 
                             human_cf_lines.append([(src, human_only_dst)])
                             human_cf_costs.append(total_costs + env.type_costs[env.cell_types[human_only_dst]])
                                 
-                d_tminus1 = d_t
+                d_tminus1[b] = d_t
                 
                 next_state, cost, finished = env.step(action)
                 if finished:
