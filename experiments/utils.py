@@ -127,7 +127,7 @@ def learn_evaluate(switching_agent: Agent, acting_agents, envs ,is_learn: bool, 
             
             if finished:
                 break
-            if is_learn and  switching_agent.trainable:
+            if is_learn and  switching_agent.trainable and len(td_errors):
                 td_errors = torch.stack(td_errors)
                 switching_agent.update_policy(1, td_errors)
                 if torch.is_tensor(list(switching_agent.network.parameters())[0].grad):
@@ -281,7 +281,7 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory_batch , n
                     log_pis.append(policy.log_prob(torch.as_tensor(action)))
                     entropies.append(policy.entropy().mean())
 
-            if switching_agent.trainable:
+            if switching_agent.trainable and len(td_errors):
                 critic_emphatic_weightings = torch.as_tensor(critic_emphatic_weightings)                
                 td_errors = torch.stack(td_errors)
                 switching_agent.update_policy(critic_emphatic_weightings, td_errors)
