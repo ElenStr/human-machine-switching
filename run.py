@@ -48,7 +48,7 @@ switching_noise = 0.0
 c_H = 0.0
 
 # Machine
-batch_size = 1
+batch_size = 5
 # state size with string features
 n_state_features_strings = env_generator.n_state_strings(depth, width)
 
@@ -156,20 +156,20 @@ print(f'Human cost {human_cost}')
 #     pickle.dump(on_line_set, file, pickle.HIGHEST_PROTOCOL)
 # # %%
 
-machine_only_algo = {'machine_only_b1': (machine_only, [human, machine])}
-machine_only_algo, machine_only_costs = train(machine_only_algo, trajectories, [], eval_set, eval_freq, save_freq, batch_size=batch_size)
+# machine_only_algo = {'auto_b5_We_off_D50K_on_D50K': (machine_only, [human, machine])}
+# machine_only_algo, machine_only_costs = train(machine_only_algo, trajectories, [], eval_set, eval_freq, save_freq, batch_size=batch_size)
 
-machine.trainable = False
-algos = {'fixed_policies_b1': (switch_fixed_policies,[human, machine])}
-algos, algos_costs = train(algos, trajectories, eval_set, eval_set, eval_freq, save_freq, batch_size=batch_size,eval_tries=5)
+# machine.trainable = False
+# algos = {'fxd_b5_We_off_D50K_on_D50K': (switch_fixed_policies,[human, machine])}
+# algos, algos_costs = train(algos, trajectories, eval_set, eval_set, eval_freq, save_freq, batch_size=batch_size,eval_tries=5)
 
-machine.trainable = True
-machine_only_algo = {'machine_only_b1': (machine_only, [human, machine])}
-machine_only_algo, machine_only_costs = train(machine_only_algo, [], on_line_set, eval_set, eval_freq, save_freq, not_batched=False)
+# machine.trainable = True
+# machine_only_algo = {'auto_b5_We_off_D50K_on_D50K': (machine_only, [human, machine])}
+# machine_only_algo, machine_only_costs = train(machine_only_algo, [], on_line_set, eval_set, eval_freq, save_freq, batch_size=batch_size)
 # # # # %%
 
-# algos =  { 'switching_50K':( switch_full,[human, switch_machine]) }
-# algos, algos_costs = train(algos, trajectories, [], eval_set, eval_freq, save_freq, batch_size=batch_size,eval_tries=5)
+algos =  { 'switch_b5_We_off_D50K_on_D50K':( switch_full,[human, switch_machine]) }
+algos, algos_costs = train(algos, trajectories, on_line_set, eval_set, eval_freq, save_freq, batch_size=batch_size,eval_tries=5)
 
 
 # algos =  { 'switching_50K':( switch_full,[human, switch_machine]) }

@@ -24,8 +24,9 @@ def learn_evaluate(switching_agent: Agent, acting_agents, envs ,is_learn: bool, 
     acting_agents:  list of Agent
         The actings agents
 
-    env: GridWorld
-        The environment for the current episode   
+    envs: list of GridWorld
+        If in learning mode it contains the environment batch, 
+        otherwise the environment for evaluation.
 
     is_learn: bool
         Indicates if we are training or evaluating. If `is_learn == True`,
@@ -190,8 +191,9 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory_batch , n
     acting_agents:  list of Agent
         The actings agents (always contains 2)
 
-    trajectory: list
-        The trajectory induced by the behavior policy   
+    trajectory_batch: array 
+        The trajectory batch induced by the behavior policy. 
+        
 
     Returns
     -------
@@ -201,6 +203,8 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory_batch , n
 
     for i in range(n_try):
 
+        switching_agent.F_t = np.zeros(trajectory_batch[0].shape[0])
+        acting_agents[1].M_t = np.zeros(trajectory_batch[0].shape[0])
         for t_batch in trajectory_batch:
             critic_emphatic_weightings = []
             td_errors = []
@@ -211,8 +215,6 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory_batch , n
             costs_for_delta = []
             v_tplus1_inp = []
             v_t_inp = []
-            # print(t_batch.shape)
-            # print(trajectory_batch.shape)
             for b,t in enumerate(t_batch):
                 # print(t)
 
@@ -243,13 +245,13 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory_batch , n
                     policy = acting_agents[1].take_action(current_state)[1]
                     with torch.no_grad():
                         machine_pi_t = policy.probs[action].item()
-                    rho = machine_pi_t / mu_t
+                        rho = machine_pi_t / mu_t
 
-                    var_rho_prev = switching_agent.var_rho[b]
-                    switching_agent.F_t[b] = 1 + var_rho_prev * switching_agent.F_t[b]
+                        var_rho_prev = switching_agent.var_rho[b]
+                        switching_agent.F_t[b] = 1 + var_rho_prev * switching_agent.F_t[b]
 
-                    var_pi_t = machine_pi_t if d_t else mu_t
-                    switching_agent.var_rho[b] = var_pi_t / mu_t
+                        var_pi_t = machine_pi_t if d_t else mu_t
+                        switching_agent.var_rho[b] = var_pi_t / mu_t
 
                     emphatic_weighting  = rho * switching_agent.F_t[b] 
                     

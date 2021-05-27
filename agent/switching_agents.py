@@ -99,7 +99,7 @@ class SwitchingAgent(Agent):
         self.epsilon = eps
         self.F_t= np.zeros(batch_size)
         
-        self.var_rho = np.ones(batch_size)
+        self.var_rho = np.zeros(batch_size)
 
         self.trainable = True
         self.n_state_features = n_state_features[0]
@@ -153,6 +153,9 @@ class SwitchingAgent(Agent):
         switch: int
             The switching decision
         """
+        # start machine training in off policy
+        # if train and any(self.F_t==0):
+        #     return 1
         state_feature_vector  = state2features(curr_state, self.n_state_features)
         # TODO: change human/machine feauture value for 1-hot encoding
          

@@ -87,7 +87,7 @@ def train(algos, trajectories, on_line_set,
                 # print log
                 if verbose and ep % eval_freq == 0 and (ep // eval_freq > 0):
                     eval_cost = evaluate(switching_agent, acting_agents, eval_set, n_try=eval_tries)
-                    print(f'{datetime.datetime.now()}, Off-policy, Step {ep}, {algo} evaluation cost: {eval_cost}')
+                    print(f'{datetime.datetime.now()}, Off-policy, Episode {ep}, {algo} evaluation cost: {eval_cost}')
                     algos_costs[algo].append(eval_cost) 
 
                 # save agent
