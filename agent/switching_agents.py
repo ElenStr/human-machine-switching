@@ -97,6 +97,8 @@ class SwitchingAgent(Agent):
         self.target_update_freq = 200
         self.timesteps = 0
         self.epsilon = eps
+        self.epsilon_0 = eps
+
         self.F_t= np.zeros(batch_size)
         
         self.var_rho = np.zeros(batch_size)
@@ -125,6 +127,7 @@ class SwitchingAgent(Agent):
         """
         if self.timesteps % self.target_update_freq ==0:
             self.target_network.load_state_dict(self.network.state_dict())
+            self.epsilon = self.epsilon_0 * np.exp(-self.timesteps)
         self.timesteps+=1
         # weighting and c'(s,a) + V(s+1) must have been computed with torch.no_grad()
         # maybe weighting needs clamp(0,1)!!!
