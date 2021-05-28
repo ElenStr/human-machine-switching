@@ -1,10 +1,15 @@
 import os
+import pickle
 
 import numpy as np
 import matplotlib as mpl
+import pandas as pd
 
-mpl.use('pdf')
+# mpl.use('pdf')
 import matplotlib.pyplot as plt
+
+from experiments.experiments import evaluate
+from agent.switching_agents import FixedSwitchingHuman
 
 
 def latexify(fig_width, fig_height, font_size=7, legend_size=5.6):
@@ -75,3 +80,26 @@ def plot_regret(alg2_regret, greedy_regret, file_name):
     ax.set_xlabel(r'Episode, $k$')
     ax.legend(frameon=False)
     fig.savefig(file_name, bbox_inches='tight')
+
+
+def plot_performance(agents, optimal_c, human, eval_set, root_dir):
+    costs_dict = {}
+    n_episodes = 0
+    for agent in agents:
+        config = agent.split('_')
+        on_off = config[3]
+        with open(f'{root_dir}/{agent}/costs_{on_off}', 'rb') as file :
+            costs = pickle.load(file)
+            costs_dict[agent] = costs
+        if len(config) > 6:
+            on_off = config[5]
+            with open(f'{root_dir}/{agent}/costs_{on_off}', 'rb') as file :
+                costs = pickle.load(file)
+                costs_dict[agent].extend(costs)
+        n_episodes = max(len(costs_dict[agent]), n_episodes)
+        
+    costs_dict['optimal'] = [optimal_c]* n_episodes
+    costs_dict['human'] = [evaluate(FixedSwitchingHuman(), [human],eval_set, n_try=1) for _ in range(n_episodes)]
+
+    df = pd.DataFrame({k:pd.Series(v) for k,v in costs_dict.items()} )
+    df.plot(style='.-')
