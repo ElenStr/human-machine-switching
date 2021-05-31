@@ -47,6 +47,7 @@ def learn_evaluate(switching_agent: Agent, acting_agents, envs ,is_learn: bool, 
 
     human_cf_lines = []
     human_cf_costs = []
+    
     for i in range(n_try):       
         for env in envs:
             env.reset()
@@ -138,7 +139,7 @@ def learn_evaluate(switching_agent: Agent, acting_agents, envs ,is_learn: bool, 
                         print('critic grad > 1e3')
 
             
-            if is_learn and acting_agents[1].trainable:
+            if is_learn and acting_agents[1].trainable and len(costs_for_delta):
                 # print(policy.log_prob(policy.sample()).exp())
                 with torch.no_grad():
                     v_tplus1 = switching_agent.target_network(v_tplus1_inp)
@@ -270,7 +271,7 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory_batch , n
                         critic_emphatic_weightings.append(emphatic_weighting)
                         td_errors.append(td_error)
                 
-                if acting_agents[1].trainable:                
+                if acting_agents[1].trainable and d_t*acting_agents[1].M_t[b] !=0 :                
                     acting_agents[1].M_t[b] = d_t + var_rho_prev*acting_agents[1].M_t[b]
                     emphatic_weighting = rho * acting_agents[1].M_t[b]
                     if not emphatic_weighting:
@@ -293,7 +294,7 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory_batch , n
                         print('critic zero grad ')
                     if not torch.all(list(switching_agent.network.parameters())[-1].grad < 1e3):
                         print('critic grad > 1e3')
-            if acting_agents[1].trainable:
+            if acting_agents[1].trainable and len(actor_emphatic_weightings):
                 
                 with torch.no_grad():
                     v_tplus1 = switching_agent.target_network(v_tplus1_inp)
@@ -302,9 +303,9 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory_batch , n
                     
                 deltas = torch.as_tensor(costs_for_delta) + v_tplus1 - v_t
                     # updated dt ?                   
-                    # if not delta:
-                    #     print('delta ',cost, v_tplus1, v_t)
-                    #     print(current_state, action, next_state)                 
+                if not deltas.any():
+                    print('Deltas ') #,cost, v_tplus1, v_t)
+                    # print(current_state, action, next_state)                 
                     
                     
 

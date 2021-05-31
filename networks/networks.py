@@ -92,7 +92,7 @@ class OptionCriticNet(Network):
         """
         # TODO: change (if features[-1]) for 1-hot encoding
         features = np.array(features)
-        if  len(features.shape)==1 and features.shape[0]>2:
+        if  len(features.shape)==1:
             agent_control_cost = self.c_M if features[-2] else self.c_H
         else:
             agent_control_cost = self.c_M*features[:,-2] + self.c_H*features[:,-1]
