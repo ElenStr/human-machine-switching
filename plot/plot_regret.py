@@ -82,7 +82,7 @@ def plot_regret(alg2_regret, greedy_regret, file_name):
     fig.savefig(file_name, bbox_inches='tight')
 
 
-def plot_performance(agents, optimal_c, human, eval_set, root_dir):
+def plot_performance(root_dir, eval_set, agents, optimal_c, human_c=None, human=None):
     costs_dict = {}
     n_episodes = 0
     for agent in agents:
@@ -91,7 +91,7 @@ def plot_performance(agents, optimal_c, human, eval_set, root_dir):
         with open(f'{root_dir}/{agent}/costs_{on_off}', 'rb') as file :
             costs = pickle.load(file)
             costs_dict[agent] = costs
-        if len(config) > 6:
+        if 'on' in config:
             on_off = config[5]
             with open(f'{root_dir}/{agent}/costs_{on_off}', 'rb') as file :
                 costs = pickle.load(file)
@@ -99,7 +99,7 @@ def plot_performance(agents, optimal_c, human, eval_set, root_dir):
         n_episodes = max(len(costs_dict[agent]), n_episodes)
         
     costs_dict['optimal'] = [optimal_c]* n_episodes
-    costs_dict['human'] = [evaluate(FixedSwitchingHuman(), [human],eval_set, n_try=1) for _ in range(n_episodes)]
+    costs_dict['human'] = [human_c]*n_episodes if human_c else [evaluate(FixedSwitchingHuman(), [human],eval_set, n_try=3) for _ in range(n_episodes)]
 
     df = pd.DataFrame({k:pd.Series(v) for k,v in costs_dict.items()} )
     df.plot(style='.-')
