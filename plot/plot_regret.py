@@ -91,8 +91,8 @@ def plot_performance(root_dir, eval_set, agents, optimal_c, human_c=None, human=
         with open(f'{root_dir}/{agent}/costs_{on_off}', 'rb') as file :
             costs = pickle.load(file)
             costs_dict[agent] = costs
-        if 'on' in config:
-            on_off = config[5]
+        if 'on' in config and 'off' in config:
+            on_off = config[np.argwhere(np.array(config) == 'on')[0].flatten()[0]]
             with open(f'{root_dir}/{agent}/costs_{on_off}', 'rb') as file :
                 costs = pickle.load(file)
                 costs_dict[agent].extend(costs)
