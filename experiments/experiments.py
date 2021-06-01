@@ -7,24 +7,29 @@ from definitions import ROOT_DIR
 from experiments.utils import learn_off_policy, learn_evaluate
 from agent.agents import Agent
 
-def save_agent_cost(name, actor, critic, costs, on_off):
-    with open(f'{ROOT_DIR}/outputs/agents/{name}/switching_agent_'+on_off, 'wb') as file:
+def save_agent_cost(name, actor, critic, costs, ratios, on_off):
+    with open(f'{ROOT_DIR}/results/{name}/switching_agent_'+on_off, 'wb') as file:
         pickle.dump(critic, file, pickle.HIGHEST_PROTOCOL)
     # No need to save fixed machine in fixed actor policies case
     if actor.trainable:
-        with open(f'{ROOT_DIR}/outputs/agents/{name}/actor_agent_'+on_off, 'wb') as file:
+        with open(f'{ROOT_DIR}/results/{name}/actor_agent_'+on_off, 'wb') as file:
             pickle.dump(actor, file, pickle.HIGHEST_PROTOCOL)
     if len(costs):
-        with open(f'{ROOT_DIR}/outputs/agents/{name}/costs_'+on_off, 'wb') as file:
+        with open(f'{ROOT_DIR}/results/{name}/costs_'+on_off, 'wb') as file:
             pickle.dump(costs, file, pickle.HIGHEST_PROTOCOL)
+    if len(ratios):
+        with open(f'{ROOT_DIR}/results/{name}/ratios_'+on_off, 'wb') as file:
+            pickle.dump(ratios, file, pickle.HIGHEST_PROTOCOL)
 
 def evaluate(switching_agent, acting_agents, eval_set, n_try=10, plt_path=None):
     eval_costs = []
+    machine_picked_ratios = []
     for grid in eval_set:
-        cost = learn_evaluate(switching_agent, acting_agents, [grid], is_learn=False, ret_trajectory=False, n_try=n_try, plt_path=plt_path)
+        cost, machine_picked = learn_evaluate(switching_agent, acting_agents, [grid], is_learn=False, ret_trajectory=False, n_try=n_try, plt_path=plt_path)
         eval_costs.append(cost)
+        machine_picked_ratios.append(machine_picked)
     
-    return np.mean(eval_costs)
+    return np.mean(eval_costs), np.mean(machine_picked_ratios)
 
 
 def train(algos, trajectories, on_line_set,
@@ -71,6 +76,7 @@ def train(algos, trajectories, on_line_set,
         A dictionary containing the cost of  every algorithm in each episode
     """
     algos_costs = defaultdict(lambda:[])
+    machine_picked_ratios = defaultdict(lambda:[])
     if trajectories:
         ep_l = len(trajectories[0])
         trajectories = np.asarray(trajectories, dtype=object)
@@ -86,15 +92,20 @@ def train(algos, trajectories, on_line_set,
 
                 # print log
                 if verbose and ep % eval_freq == 0 and (ep // eval_freq > 0):
-                    eval_cost = evaluate(switching_agent, acting_agents, eval_set, n_try=eval_tries)
+                    eval_cost, machine_picked = evaluate(switching_agent, acting_agents, eval_set, n_try=eval_tries)
                     print(f'{datetime.datetime.now()}, Off-policy, Episode {ep}, {algo} evaluation cost: {eval_cost}')
-                    algos_costs[algo].append(eval_cost) 
+                    algos_costs[algo].append(eval_cost)
+                    if 'switch' in algo or 'fxd' in algo:
+                        machine_picked_ratios[algo].append(machine_picked) 
 
                 # save agent
                 if save_agent and (ep % save_freq == 0) and (ep // save_freq > 0):
-                    save_agent_cost(algo, machine, switching_agent, algos_costs[algo], 'off')
+                    save_agent_cost(algo, machine, switching_agent, algos_costs[algo],machine_picked_ratios[algo] , 'off')
                 algos[algo] = (switching_agent, acting_agents)
+    
     if on_line_set:
+        algos_costs = defaultdict(lambda:[])
+        machine_picked_ratios = defaultdict(lambda:[])
         batched_online_set = np.resize(on_line_set, (len(on_line_set)//batch_size, batch_size))        
         for ep,grid_worlds in enumerate(batched_online_set):
             
@@ -107,13 +118,16 @@ def train(algos, trajectories, on_line_set,
 
                 # print log
                 if verbose and ep % eval_freq == 0 and (ep // eval_freq > 0):
-                    eval_cost = evaluate(switching_agent, acting_agents, eval_set,n_try=eval_tries)
+                    eval_cost, machine_picked = evaluate(switching_agent, acting_agents, eval_set,n_try=eval_tries)
                     print(f'{datetime.datetime.now()}, On-policy, Episode {ep}, {algo}  evaluation cost: {eval_cost}')
                     algos_costs[algo].append(eval_cost)
+                    if 'switch' in algo or 'fxd' in algo:
+                        machine_picked_ratios[algo].append(machine_picked) 
+
 
                 # save agent
                 if save_agent and (ep % save_freq == 0) and (ep // save_freq > 0):
-                    save_agent_cost(algo, machine, switching_agent,algos_costs[algo], 'on')   
+                    save_agent_cost(algo, machine, switching_agent,algos_costs[algo],machine_picked_ratios[algo], 'on')   
                 algos[algo] = (switching_agent, acting_agents)
             
     

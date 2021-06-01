@@ -41,6 +41,7 @@ def learn_evaluate(switching_agent: Agent, acting_agents, envs ,is_learn: bool, 
         Average total cost of the trajectory
     """
     total_costs = []
+    total_machine_picked =[]
     
     if ret_trajectory:
         trajectory = []
@@ -54,6 +55,7 @@ def learn_evaluate(switching_agent: Agent, acting_agents, envs ,is_learn: bool, 
         d_tminus1 = np.zeros(batch_size)
         timestep = 0
         trajectory_cost = 0
+        machine_picked = 0
         while True:
             timestep+=1
             td_errors = []
@@ -68,6 +70,7 @@ def learn_evaluate(switching_agent: Agent, acting_agents, envs ,is_learn: bool, 
 
                 d_t = switching_agent.take_action(current_state, is_learn)
                 option = acting_agents[d_t] 
+                machine_picked+=d_t
                 if not d_t:  
                     action = option.take_action(current_state, d_tminus1[b])
                 else:
@@ -91,6 +94,7 @@ def learn_evaluate(switching_agent: Agent, acting_agents, envs ,is_learn: bool, 
                 
                 next_state, cost, finished = env.step(action)
                 if finished:
+                    total_machine_picked.append(machine_picked/(timestep*len(envs)))
                     break 
                 dst = env.current_coord
 
@@ -177,7 +181,7 @@ def learn_evaluate(switching_agent: Agent, acting_agents, envs ,is_learn: bool, 
         return trajectory
                     
 
-    return np.mean(total_costs)
+    return np.mean(total_costs), np.mean(total_machine_picked)
 
 
 def learn_off_policy(switching_agent: Agent, acting_agents, trajectory_batch , n_try=1, plt_path=None):
