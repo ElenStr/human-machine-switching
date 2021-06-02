@@ -6,7 +6,7 @@ init_traffic_level = 'light'
 n_actions = 3
 
 # Human 
-estimation_noise = 2.0
+estimation_noise = 3.5
 switching_noise = 0.0
 c_H = 0.0
 
@@ -24,8 +24,8 @@ n_episodes = 50000
 
 eval_freq = 1000
 save_freq = 5000//batch_size
-eval_tries = 1
+eval_tries = 3
 
-agent = 'auto'
+agent = 'fxd'
 method = 'off_on'
 entropy_weight = 0.01

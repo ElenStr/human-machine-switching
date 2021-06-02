@@ -71,10 +71,26 @@ n_state_features = (n_state_features_strings, n_state_features_1hot)
 optimizer_fn = lambda params: RMSprop(params, lr)
 machine = MachineDriverAgent(n_state_features, n_actions, optimizer_fn, c_M=c_M, entropy_weight=entropy_weight, batch_size=batch_size)
 
-if agent == 'switch':
-    switch_agent = SwitchingAgent(n_state_features, optimizer_fn, c_M=c_M, c_H=c_H, eps=epsilon, batch_size=batch_size)
-else:
+if agent=='auto':
     switch_agent = FixedSwitchingMachine(n_state_features, optimizer_fn, c_M=c_M, batch_size=batch_size)
+else:
+    switch_agent = SwitchingAgent(n_state_features, optimizer_fn, c_M=c_M, c_H=c_H, eps=epsilon, batch_size=batch_size)
+
+if agent=='fxd':
+    # TODO make it work for any method of auto, now works only for same auto and fxd methods
+    machine_agent_name = 'auto_'+'_'.join(list(filter(lambda x: x!='e3', dir_name.split('_')[1:])))
+    machine_dir = f'{ROOT_DIR}/results/{machine_agent_name}/actor_agent_off'
+    try:
+        with open(machine_dir, 'rb') as file:
+            machine = pickle.load(file) 
+            
+    except:
+        machine_only = FixedSwitchingMachine(n_state_features, optimizer_fn, c_M=c_M, batch_size=batch_size)
+        machine_algo = {machine_agent_name: (machine_only, [human, machine])}
+        machine_algo, costs = train(machine_algo, trajectories,[], eval_set, eval_freq,  save_freq, batch_size=batch_size, eval_tries=1)
+        machine = machine_algo[machine_agent_name][1][1]
+    
+    machine.trainable = False
 
 
 algo = {dir_name: (switch_agent, [human, machine])}
