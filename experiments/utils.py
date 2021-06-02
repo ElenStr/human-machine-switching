@@ -210,6 +210,7 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory_batch , n
 
         switching_agent.F_t = np.zeros(trajectory_batch[0].shape[0])
         acting_agents[1].M_t = np.zeros(trajectory_batch[0].shape[0])
+        first_step = np.ones(trajectory_batch[0].shape[0])
         for t_batch in trajectory_batch:
             critic_emphatic_weightings = []
             td_errors = []
@@ -274,8 +275,7 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory_batch , n
                     if emphatic_weighting != 0. and td_error !=0 :
                         critic_emphatic_weightings.append(emphatic_weighting)
                         td_errors.append(td_error)
-                
-                if acting_agents[1].trainable and d_t*acting_agents[1].M_t[b] !=0 :                
+                if acting_agents[1].trainable and (first_step[b] or d_t or acting_agents[1].M_t[b] !=0) :                
                     acting_agents[1].M_t[b] = d_t + var_rho_prev*acting_agents[1].M_t[b]
                     emphatic_weighting = rho * acting_agents[1].M_t[b]
                     if not emphatic_weighting:
@@ -287,6 +287,7 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory_batch , n
 
                     log_pis.append(policy.log_prob(torch.as_tensor(action)))
                     entropies.append(policy.entropy().mean())
+                first_step[b] = 0
 
             if switching_agent.trainable and len(td_errors):
                 critic_emphatic_weightings = torch.as_tensor(critic_emphatic_weightings)                
