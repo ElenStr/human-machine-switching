@@ -51,9 +51,9 @@ class ActorNet(Network):
 class CriticNet(Network):
     """ Standard critic """
     def __init__(self, n_features: int, c_M ):
-        super(CriticNet, self).__init__(n_features, 1)
+        super(CriticNet, self).__init__(n_features+2, 1)
         self.c_M = c_M
-        self.needs_agent_feature = False
+        self.needs_agent_feature = True
     
     def forward(self, features):
         return super().forward(features, lambda inp : inp + self.c_M)
