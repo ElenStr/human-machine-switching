@@ -85,6 +85,8 @@ if agent=='fxd':
             machine = pickle.load(file) 
             
     except:
+        if not os.path.exists(machine_dir):
+            os.mkdir( f'{ROOT_DIR}/results/{machine_agent_name}')
         machine_only = FixedSwitchingMachine(n_state_features, optimizer_fn, c_M=c_M, batch_size=batch_size)
         machine_algo = {machine_agent_name: (machine_only, [human, machine])}
         machine_algo, costs = train(machine_algo, trajectories,[], eval_set, eval_freq,  save_freq, batch_size=batch_size, eval_tries=1)
