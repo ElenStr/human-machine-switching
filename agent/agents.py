@@ -39,7 +39,7 @@ class MachineDriverAgent(Agent):
         self.entropy_weight = entropy_weight
         self.entropy_weight_0 = entropy_weight
         self.timestep = 0
-        self.entropy_decay_freq = 200
+        self.entropy_decay_freq = 5000
         self.control_cost = c_M
         self.trainable = True
         self.M_t = np.zeros(batch_size)
@@ -70,7 +70,7 @@ class MachineDriverAgent(Agent):
         """
         if self.timestep % self.entropy_decay_freq ==0 and self.entropy_weight >0.0:
             
-            self.entropy_weight =self.entropy_weight_0* np.exp(-self.timestep)
+            self.entropy_weight =self.entropy_weight_0* np.exp(-(self.timestep//20)//self.entropy_decay_freq)
         self.timestep+=1
         # weighting and delta must have been computed with torch.no_grad()
         # log_pi =  current_policy.log_prob(action)

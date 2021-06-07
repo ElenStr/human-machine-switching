@@ -33,8 +33,8 @@ class FixedSwitchingMachine(Agent):
     def __init__(self, n_state_features, optimizer, c_M, batch_size=1):
         """Initialize network and hyperparameters"""
         super(FixedSwitchingMachine, self).__init__()
-        self.network = CriticNet(n_state_features[1], c_M)
-        self.target_network = CriticNet(n_state_features[1], c_M)
+        self.network = CriticNet(n_state_features[1]+2, c_M)
+        self.target_network = CriticNet(n_state_features[1]+2, c_M)
         self.target_network.load_state_dict(self.network.state_dict())
         self.target_update_freq = 200
         self.timesteps = 0
@@ -95,6 +95,7 @@ class SwitchingAgent(Agent):
         self.target_network = OptionCriticNet(n_state_features[1]+2, c_M,c_H)
         self.target_network.load_state_dict(self.network.state_dict())
         self.target_update_freq = 200
+        self.epsilon_update_freq = 5000
         self.timesteps = 0
         self.epsilon = eps
         self.epsilon_0 = eps
@@ -127,7 +128,8 @@ class SwitchingAgent(Agent):
         """
         if self.timesteps % self.target_update_freq ==0:
             self.target_network.load_state_dict(self.network.state_dict())
-            self.epsilon = self.epsilon_0 * np.exp(-np.sqrt(self.timesteps))
+        if (self.timesteps//20) % self.epsilon_update_freq ==0:
+            self.epsilon = self.epsilon_0 * np.exp(-np.sqrt((self.timesteps//20)//self.epsilon_update_freq))        
         self.timesteps+=1
         # weighting and c'(s,a) + V(s+1) must have been computed with torch.no_grad()
         # maybe weighting needs clamp(0,1)!!!
@@ -166,11 +168,12 @@ class SwitchingAgent(Agent):
         machine_option_value = self.network(state_feature_vector + [1.,0.]).detach().item()
         # epsilon greedy only when training
         p = random.random()
-        epsilon = self.epsilon if train else 0.0
+        epsilon = self.epsilon #if train else 0.0
         if p < 1- epsilon:
             switch = np.argmin([human_option_value, machine_option_value]).flatten()[0]
         else:
             switch = random.choices([0, 1], [.5, .5])[0]
-        # print(human_option_value, machine_option_value, switch)
+        # if human_option_value> machine_option_value : 
+        #     print(human_option_value, machine_option_value, switch)
         
         return switch 

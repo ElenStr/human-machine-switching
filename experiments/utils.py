@@ -208,8 +208,8 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory_batch , n
 
     for i in range(n_try):
 
-        switching_agent.F_t = np.zeros(trajectory_batch[0].shape[0])
-        acting_agents[1].M_t = np.zeros(trajectory_batch[0].shape[0])
+        # switching_agent.F_t = np.zeros(trajectory_batch[0].shape[0])
+        # acting_agents[1].M_t = np.zeros(trajectory_batch[0].shape[0])
         first_step = np.ones(trajectory_batch[0].shape[0])
         for t_batch in trajectory_batch:
             critic_emphatic_weightings = []
