@@ -5,7 +5,6 @@ import numpy as np
 from matplotlib import pyplot as pl
 from PIL import Image
 from matplotlib import collections as mc
-from environments.env import GridWorld
 
 from definitions import ROOT_DIR
 
@@ -20,7 +19,7 @@ class PlotPath:
     Plot an agent's trajectory in a grid-based environment during evaluation
     """
 
-    def __init__(self, grid_world: GridWorld, n_try: int, img_dir: str = IMG_DIR):
+    def __init__(self, grid_world, n_try: int, img_dir: str = IMG_DIR):
         """
         Parameters
         ----------

@@ -11,7 +11,7 @@ from plot.plot_path import HUMAN_COLOR, MACHINE_COLOR, PlotPath
  
 
 
-def learn_evaluate(switching_agent: Agent, acting_agents, envs ,is_learn: bool, ret_trajectory=False, n_try=1, plt_path=None, machine_only=False,batch_size=1):
+def learn_evaluate(switching_agent: Agent, acting_agents, envs ,is_learn: bool, ret_trajectory=False, n_try=1, batch_size=1):
     """
     Learn (on policy) or evaluate overall policy in a grid environment.
 
@@ -45,9 +45,7 @@ def learn_evaluate(switching_agent: Agent, acting_agents, envs ,is_learn: bool, 
     if ret_trajectory:
         trajectory = []
 
-    human_cf_lines = []
-    human_cf_costs = []
-    
+   
     for i in range(n_try):       
         for env in envs:
             env.reset()
@@ -65,8 +63,7 @@ def learn_evaluate(switching_agent: Agent, acting_agents, envs ,is_learn: bool, 
             v_t_inp = []
             for b,env in enumerate(envs):
                 current_state = env.current_state()
-                if plt_path is not None:               
-                    src = env.current_coord
+                
 
                 d_t = switching_agent.take_action(current_state, is_learn)
                 option = acting_agents[d_t] 
@@ -75,20 +72,6 @@ def learn_evaluate(switching_agent: Agent, acting_agents, envs ,is_learn: bool, 
                     action = option.take_action(current_state, d_tminus1[b])
                 else:
                     action, policy = option.take_action(current_state)
-                    if plt_path is not None:
-                        for key in range(len(human_cf_lines)):
-                            cf_src =  human_cf_lines[key][-1][1]
-                            cf_state = env.coords2state(cf_src[0], cf_src[1])
-                            cf_action =  acting_agents[0].take_action(cf_state)
-                            cf_dst = env.next_coords(cf_src[0], cf_src[1], cf_action)
-                            human_cf_lines[key].append((cf_src, cf_dst))
-                            human_cf_costs[key]+=(env.type_costs[env.cell_types[cf_dst]])
-
-                        if (not machine_only) or (machine_only and timestep==1):# record here human alternative
-                            human_only_action = acting_agents[0].take_action(current_state)
-                            human_only_dst = env.next_cell(human_only_action, move=False)[0]
-                            human_cf_lines.append([(src, human_only_dst)])
-                            human_cf_costs.append(total_costs + env.type_costs[env.cell_types[human_only_dst]])
                                 
                 d_tminus1[b] = d_t
                 
@@ -96,8 +79,7 @@ def learn_evaluate(switching_agent: Agent, acting_agents, envs ,is_learn: bool, 
                 if finished:
                     total_machine_picked.append(machine_picked/(timestep*len(envs)))
                     break 
-                if plt_path is not None:               
-                    dst = env.current_coord
+                
 
                 c_tplus1 = cost + option.control_cost
                 if ret_trajectory:
@@ -170,14 +152,9 @@ def learn_evaluate(switching_agent: Agent, acting_agents, envs ,is_learn: bool, 
 
             trajectory_cost += c_tplus1            
 
-            if plt_path is not None:               
-                clr = MACHINE_COLOR if d_t else HUMAN_COLOR
-                plt_path.add_line(src, dst, clr)
+            
         total_costs.append(trajectory_cost)
-    if human_cf_costs:
-        key = np.argmin(human_cf_costs)
-        for src, dst in human_cf_lines[key][:-1]:
-            plt_path.add_line(src, dst, HUMAN_COLOR)
+   
     if ret_trajectory:
         return trajectory
                     

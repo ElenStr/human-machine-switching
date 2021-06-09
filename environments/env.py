@@ -1,7 +1,7 @@
 import random
 import numpy as np
 
-# from plot.plot_path import PlotPath
+from plot.plot_path import HUMAN_COLOR, MACHINE_COLOR
 
 CELL_TYPES = ['road', 'grass', 'stone', 'car']
 TRAFFIC_LEVELS = ['no-car', 'light', 'heavy']
@@ -203,7 +203,85 @@ class GridWorld:
         """ resets the trajectory """
         self.current_coord = ((self.width - 1) // 2, 0)
 
+    def plot_trajectory(self, switching_agent, acting_agents, plt_path, show_cf=False, machine_only=False):
+        """
+        Plot trajectory of agent in grid environment.
+
+        Parameters
+        ----------
+        switching_agent:  Agent
+            The switching agent
+
+        acting_agents:  list of Agent
+            The actings agents
+
+        plt_path: PlotPath
+            The plotter object with the trajectory to be plotted
+        
+        show_cf: bool
+            Wether to plot human counterfactual decision when switching chose machine
+
+        machine_only: bool
+            True if the swithing agent chooses always machine
+        
+        """       
+
+        human_cf_lines = []
+        human_cf_costs = []              
+        d_tminus1 = 0
+        timestep = 0
+        trajectory_cost = 0
+        machine_picked = 0
+        self.reset()
+        while True:
+            timestep+=1          
+           
+            current_state = self.current_state()
+            src = self.current_coord
+
+            d_t = switching_agent.take_action(current_state, False)
+            option = acting_agents[d_t] 
+            machine_picked+=d_t
+            if not d_t:  
+                action = option.take_action(current_state, d_tminus1)
+            else:
+                action, policy = option.take_action(current_state)
+                if show_cf:
+                    for key in range(len(human_cf_lines)):
+                        cf_src =  human_cf_lines[key][-1][1]
+                        cf_state = self.coords2state(cf_src[0], cf_src[1])
+                        cf_action =  acting_agents[0].take_action(cf_state)
+                        cf_dst = self.next_coords(cf_src[0], cf_src[1], cf_action)
+                        human_cf_lines[key].append((cf_src, cf_dst))
+                        human_cf_costs[key]+=(self.type_costs[self.cell_types[cf_dst]])
+
+                    if (not machine_only) or (machine_only and timestep==1):# record here human alternative
+                        human_only_action = acting_agents[0].take_action(current_state)
+                        human_only_dst = self.next_cell(human_only_action, move=False)[0]
+                        human_cf_lines.append([(src, human_only_dst)])
+                        human_cf_costs.append(trajectory_cost + self.type_costs[self.cell_types[human_only_dst]])
+                            
+            d_tminus1 = d_t
+            
+            next_state, cost, finished = self.step(action)
+            if finished:
+                break 
+            dst = self.current_coord
+
+            c_tplus1 = cost + option.control_cost         
+                        
+            trajectory_cost += c_tplus1            
+
+            clr = MACHINE_COLOR if d_t else HUMAN_COLOR
+            plt_path.add_line(src, dst, clr)
     
+        if human_cf_costs:
+            key = np.argmin(human_cf_costs)
+            for src, dst in human_cf_lines[key][:-1]:
+                plt_path.add_line(src, dst, HUMAN_COLOR)        
+                        
+
+        return trajectory_cost, machine_picked/timestep
 
 class Environment:
     """
