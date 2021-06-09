@@ -300,7 +300,10 @@ class Environment:
         f_v = [0.]*n_onehot
         f_v[n_onehot - value - 1] = 1.
         return f_v
-   
+    @staticmethod
+    def agent_feature2net_input(value):
+        return Environment.feature2net_input(value,2)
+    
     @staticmethod
     def state2features(state, n_features, real_v=False):
         """

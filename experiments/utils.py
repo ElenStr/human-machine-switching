@@ -65,7 +65,8 @@ def learn_evaluate(switching_agent: Agent, acting_agents, envs ,is_learn: bool, 
             v_t_inp = []
             for b,env in enumerate(envs):
                 current_state = env.current_state()
-                src = env.current_coord
+                if plt_path is not None:               
+                    src = env.current_coord
 
                 d_t = switching_agent.take_action(current_state, is_learn)
                 option = acting_agents[d_t] 
@@ -95,7 +96,8 @@ def learn_evaluate(switching_agent: Agent, acting_agents, envs ,is_learn: bool, 
                 if finished:
                     total_machine_picked.append(machine_picked/(timestep*len(envs)))
                     break 
-                dst = env.current_coord
+                if plt_path is not None:               
+                    dst = env.current_coord
 
                 c_tplus1 = cost + option.control_cost
                 if ret_trajectory:
@@ -107,12 +109,12 @@ def learn_evaluate(switching_agent: Agent, acting_agents, envs ,is_learn: bool, 
                         with torch.no_grad():
                             d_tplus1 = switching_agent.take_action(next_state,is_learn)
                             if switching_agent.network.needs_agent_feature :
-                                next_features.extend(Environment.feature2net_input(d_tplus1,2))
+                                next_features.extend(Environment.agent_feature2net_input(d_tplus1))
                             v_tplus1 = switching_agent.target_network(next_features)
 
                         features = Environment.state2features(current_state, switching_agent.n_state_features)
                         if switching_agent.network.needs_agent_feature :
-                            features.extend(Environment.feature2net_input(d_t,2))
+                            features.extend(Environment.agent_feature2net_input(d_t))
                         v_t = switching_agent.network(features)
                         
                         td_error = c_tplus1 + v_tplus1 - v_t
@@ -183,6 +185,7 @@ def learn_evaluate(switching_agent: Agent, acting_agents, envs ,is_learn: bool, 
     return np.mean(total_costs), np.mean(total_machine_picked)
 
 
+
 def learn_off_policy(switching_agent: Agent, acting_agents, trajectory_batch , n_try=1, plt_path=None):
     """
     Learn  overall policy off-policy in a grid environment.
@@ -235,12 +238,12 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory_batch , n
                     with torch.no_grad():
                         d_tplus1 = switching_agent.take_action(next_state, True)
                         if switching_agent.network.needs_agent_feature :                        
-                            next_features.extend(Environment.feature2net_input(d_tplus1,2))
+                            next_features.extend(Environment.agent_feature2net_input(d_tplus1))
                         v_tplus1 = switching_agent.target_network(next_features)
 
                     features = Environment.state2features(current_state, switching_agent.n_state_features)
                     if switching_agent.network.needs_agent_feature :
-                        features.extend(Environment.feature2net_input(d_t,2))
+                        features.extend(Environment.agent_feature2net_input(d_t))
                     v_t = switching_agent.network(features)
                     
                     td_error = c_tplus1 + v_tplus1 - v_t
