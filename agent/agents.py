@@ -34,15 +34,15 @@ class MachineDriverAgent(Agent):
     def __init__(self, n_state_features, n_actions, optimizer, c_M=0., entropy_weight=0.01, batch_size=1):
         """Initialize network and hyperparameters"""
         super(MachineDriverAgent, self).__init__()
+        # n_state_features[1] is the network input size
         self.network = ActorNet(n_state_features[1], n_actions)
         self.optimizer = optimizer(self.network.parameters())
         self.entropy_weight = entropy_weight
-        self.entropy_weight_0 = entropy_weight
         self.timestep = 0
-        self.entropy_decay_freq = 5000
         self.control_cost = c_M
         self.trainable = True
         self.M_t = np.zeros(batch_size)
+        # n_state_features[0] is the number of state features
         self.n_state_features = n_state_features[0]
 
 
@@ -68,16 +68,12 @@ class MachineDriverAgent(Agent):
         action: int
             The action taken
         """
-        if self.timestep % self.entropy_decay_freq ==0 and self.entropy_weight >0.0:
             
-            self.entropy_weight =self.entropy_weight_0* np.exp(-(self.timestep//20)//self.entropy_decay_freq)
         self.timestep+=1
+        self.entropy_weight = 1/self.timestep
         # weighting and delta must have been computed with torch.no_grad()
-        # log_pi =  current_policy.log_prob(action)
-        # # TODO: entropy = entropy.mean() for batch update 
-        # entropy = current_policy.entropy()
+        
         policy_loss = weighting * delta * log_pi  + self.entropy_weight*entropy
-        # TODO: policy_loss = policy_loss.mean() for batch update
         
         policy_loss = policy_loss.mean()
         
@@ -106,7 +102,7 @@ class MachineDriverAgent(Agent):
             The action policy distribution given form the network
         """
         # TODO: make machine worse than human+machine e.g. same feature value for road-stone
-        state_feature_vector  = state2features(curr_state, self.n_state_features)
+        state_feature_vector  = Environment.state2features(curr_state, self.n_state_features)
         actions_logits = self.network(state_feature_vector)
         policy = torch.distributions.Categorical(logits=actions_logits)
         action = policy.sample().item()
