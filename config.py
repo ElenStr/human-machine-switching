@@ -1,3 +1,5 @@
+from  numpy import sqrt
+
 # Environment 
 width = 3
 height = 20
@@ -16,7 +18,17 @@ c_M = 0.2
 lr = 1e-4
 
 # Switching Agent
-epsilon = 0.3 
+# epsilon schedule
+def eps_fn(timestep):
+    if (timestep//20) < 25000:
+        epsilon = 0.5
+    elif (timestep//20) < 50000:
+        epsilon = 0.1
+    else:
+        epsilon = 0.1* 1 / sqrt(timestep - 50000*20+1)
+    return epsilon
+
+epsilon = eps_fn 
 
 # Dataset sizes for off and online training
 n_traj = 50000
@@ -26,6 +38,6 @@ eval_freq = 1000
 save_freq = 5000//batch_size
 eval_tries = 3
 
-agent = 'fxd'
-method = 'off_on'
+agent = 'autoDec'
+method = 'on'
 entropy_weight = 0.01

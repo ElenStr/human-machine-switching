@@ -6,8 +6,7 @@ import numpy as np
 
 from agent.agents import Agent
 from agent.switching_agents import FixedSwitchingHuman
-from environments.env import GridWorld, Environment, TYPE_COSTS
-from environments.utils_env import state2features, feature2onehot
+from environments.env import Environment
 from plot.plot_path import HUMAN_COLOR, MACHINE_COLOR, PlotPath
  
 
@@ -104,16 +103,16 @@ def learn_evaluate(switching_agent: Agent, acting_agents, envs ,is_learn: bool, 
                     trajectory.append((current_state, action, next_state, cost))
                 if is_learn:
                     if switching_agent.trainable:
-                        next_features = state2features(next_state, switching_agent.n_state_features) 
+                        next_features = Environment.state2features(next_state, switching_agent.n_state_features) 
                         with torch.no_grad():
                             d_tplus1 = switching_agent.take_action(next_state,is_learn)
                             if switching_agent.network.needs_agent_feature :
-                                next_features.extend(feature2onehot(d_tplus1,2))
+                                next_features.extend(Environment.feature2net_input(d_tplus1,2))
                             v_tplus1 = switching_agent.target_network(next_features)
 
-                        features = state2features(current_state, switching_agent.n_state_features)
+                        features = Environment.state2features(current_state, switching_agent.n_state_features)
                         if switching_agent.network.needs_agent_feature :
-                            features.extend(feature2onehot(d_t,2))
+                            features.extend(Environment.feature2net_input(d_t,2))
                         v_t = switching_agent.network(features)
                         
                         td_error = c_tplus1 + v_tplus1 - v_t
@@ -232,16 +231,16 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory_batch , n
                 c_tplus1 = cost + option.control_cost
                 
                 if switching_agent.trainable:
-                    next_features = state2features(next_state, switching_agent.n_state_features) 
+                    next_features = Environment.state2features(next_state, switching_agent.n_state_features) 
                     with torch.no_grad():
                         d_tplus1 = switching_agent.take_action(next_state, True)
                         if switching_agent.network.needs_agent_feature :                        
-                            next_features.extend(feature2onehot(d_tplus1,2))
+                            next_features.extend(Environment.feature2net_input(d_tplus1,2))
                         v_tplus1 = switching_agent.target_network(next_features)
 
-                    features = state2features(current_state, switching_agent.n_state_features)
+                    features = Environment.state2features(current_state, switching_agent.n_state_features)
                     if switching_agent.network.needs_agent_feature :
-                        features.extend(feature2onehot(d_t,2))
+                        features.extend(Environment.feature2net_input(d_t,2))
                     v_t = switching_agent.network(features)
                     
                     td_error = c_tplus1 + v_tplus1 - v_t

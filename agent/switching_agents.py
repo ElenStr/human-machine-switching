@@ -86,7 +86,7 @@ class SwitchingAgent(Agent):
     """
     Switching policy chooses always machine
     """
-    def __init__(self, n_state_features, optimizer, c_M, c_H, eps=.01, batch_size=1):
+    def __init__(self, n_state_features, optimizer, c_M, c_H, eps_fn, batch_size=1):
         """Initialize network and hyperparameters"""
         super(SwitchingAgent, self).__init__()
         # TODO: change  n_state_features+1 for 1-hot encoding  
@@ -95,10 +95,10 @@ class SwitchingAgent(Agent):
         self.target_network = OptionCriticNet(n_state_features[1]+2, c_M,c_H)
         self.target_network.load_state_dict(self.network.state_dict())
         self.target_update_freq = 200
-        self.epsilon_update_freq = 5000
         self.timesteps = 0
-        self.epsilon = eps
-        self.epsilon_0 = eps
+        self.epsilon_fn = eps_fn
+        self.epsilon = self.epsilon_fn(0)
+        
 
         self.F_t= np.zeros(batch_size)
         
@@ -128,14 +128,17 @@ class SwitchingAgent(Agent):
         """
         if self.timesteps % self.target_update_freq ==0:
             self.target_network.load_state_dict(self.network.state_dict())
-        if (self.timesteps//20) % self.epsilon_update_freq ==0:
-            self.epsilon = self.epsilon_0 * np.exp(-np.sqrt((self.timesteps//20)//self.epsilon_update_freq))        
+        
+        self.epsilon = self.epsilon_fn(self.timesteps)
+        
+
+
+            
         self.timesteps+=1
         # weighting and c'(s,a) + V(s+1) must have been computed with torch.no_grad()
         # maybe weighting needs clamp(0,1)!!!
         v_loss = td_error.pow(2).mul(0.5).mul(weighting)
         
-            # TODO: v_loss = v_loss.mean() for batch update
         
         v_loss = v_loss.mean()
         self.optimizer.zero_grad()
@@ -161,14 +164,13 @@ class SwitchingAgent(Agent):
         # start machine training in off policy
         # if train and any(self.F_t==0):
         #     return 1
-        state_feature_vector  = state2features(curr_state, self.n_state_features)
-        # TODO: change human/machine feauture value for 1-hot encoding
+        state_feature_vector  = Environment.state2features(curr_state, self.n_state_features)
          
         human_option_value = self.network(state_feature_vector + [0.,1.]).detach().item()
         machine_option_value = self.network(state_feature_vector + [1.,0.]).detach().item()
-        # epsilon greedy only when training
         p = random.random()
-        epsilon = self.epsilon #if train else 0.0
+        # epsilon greedy only when training
+        epsilon = self.epsilon if train else 0.0
         if p < 1- epsilon:
             switch = np.argmin([human_option_value, machine_option_value]).flatten()[0]
         else:
