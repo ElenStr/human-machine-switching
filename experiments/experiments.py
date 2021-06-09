@@ -123,6 +123,7 @@ def train(algos, trajectories, on_line_set,
                     print(f'{datetime.datetime.now()}, On-policy, Episode {ep}, {algo}  evaluation cost: {eval_cost}')
                     algos_costs[algo].append(eval_cost)
                     if 'switch' in algo or 'fxd' in algo:
+                        print(machine_picked)
                         machine_picked_ratios[algo].append(machine_picked) 
 
 

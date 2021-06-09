@@ -120,8 +120,8 @@ def plot_performance(root_dir, eval_set, agents, optimal_c=None, human_cost_flat
         else:
             costs_dict['human'] = [evaluate(human_only, [human],eval_set, n_try=1)[0] for _ in range(n_episodes)]
     df = pd.DataFrame({k:pd.Series(v) for k,v in costs_dict.items()} )
+    df_ratios = pd.DataFrame({k:pd.Series(v) for k,v in ratios_dict.items()} )
     if ratios_dict:
-        df_ratios = pd.DataFrame({k:pd.Series(v) for k,v in ratios_dict.items()} )
         df_ratios.plot(style='.-')
 
 
