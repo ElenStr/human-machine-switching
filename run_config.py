@@ -25,6 +25,7 @@ env_generator_fn = lambda:env_generator.generate_grid_world(**env_params)
 dir_post_fix = ''
 trajectories = []
 on_line_set = []
+human = None
 if 'off' in method:
     traj_path = f'{ROOT_DIR}/outputs/trajectories/human_{estimation_noise}_{switching_noise}_{init_traffic_level}_trajectories_{n_traj}'
     dir_post_fix = f'_off_D{str(n_traj)[:-3]}K'
@@ -45,6 +46,9 @@ if 'off' in method:
 if 'on' in method :
     ds_on_path = f'{ROOT_DIR}/outputs/on_line_set_{n_episodes}_{init_traffic_level}'
     dir_post_fix += f'_on_D{str(n_episodes)[:-3]}K'
+    if human is None:
+        human = NoisyDriverAgent(env_generator, noise_sd=estimation_noise, noise_sw=switching_noise, c_H=c_H)
+
     try:
         with open(ds_on_path, 'rb') as file:
             on_line_set = pickle.load(file)
@@ -71,12 +75,12 @@ n_state_features = (n_state_features_strings, n_state_features_1hot)
 optimizer_fn = lambda params: RMSprop(params, lr)
 machine = MachineDriverAgent(n_state_features, n_actions, optimizer_fn, c_M=c_M, entropy_weight=entropy_weight, batch_size=batch_size)
 
-if agent=='auto':
+if 'auto' in agent:
     switch_agent = FixedSwitchingMachine(n_state_features, optimizer_fn, c_M=c_M, batch_size=batch_size)
 else:
-    switch_agent = SwitchingAgent(n_state_features, optimizer_fn, c_M=c_M, c_H=c_H, eps=epsilon, batch_size=batch_size)
+    switch_agent = SwitchingAgent(n_state_features, optimizer_fn, c_M=c_M, c_H=c_H, eps_fn=epsilon, batch_size=batch_size)
 
-if agent=='fxd':
+if 'fxd' in agent:
     # TODO make it work for any method of auto, now works only for same auto and fxd methods
     machine_agent_name = 'auto_'+'_'.join(list(filter(lambda x: x!='e3', dir_name.split('_')[1:])))
     machine_dir = f'{ROOT_DIR}/results/{machine_agent_name}/actor_agent_off'
