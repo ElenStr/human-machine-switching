@@ -26,21 +26,32 @@ dir_post_fix = ''
 trajectories = []
 on_line_set = []
 human = None
+
+out_dir = f'{ROOT_DIR}/outputs'
+if not os.path.exists(out_dir):
+    os.mkdir(out_dir)
+res_dir = f'{ROOT_DIR}/results'
+if not os.path.exists(res_dir):
+    os.mkdir(res_dir)  
+
 if 'off' in method:
-    traj_path = f'{ROOT_DIR}/outputs/trajectories/human_{estimation_noise}_{switching_noise}_{init_traffic_level}_trajectories_{n_traj}'
+    traj_path = f'{ROOT_DIR}/outputs/trajectories'
+    human_path = f'/human_{estimation_noise}_{switching_noise}_{init_traffic_level}_trajectories_{n_traj}'
     dir_post_fix = f'_off_D{str(n_traj)[:-3]}K'
     try:
-        with open(traj_path, 'rb') as file:
+        with open(traj_path+human_path, 'rb') as file:
             trajectories = pickle.load(file)
-        with open(traj_path+'_agent', 'rb') as file:
+        with open(traj_path+human_path+'_agent', 'rb') as file:
             human = pickle.load(file)
     except:
+        if not os.path.exists(traj_path):
+            os.mkdir(traj_path)
         human  = NoisyDriverAgent(env_generator, noise_sd=estimation_noise, noise_sw=switching_noise, c_H=c_H)
         trajectories = gather_human_trajectories(human, env_generator, n_traj,**env_params)
         
-        with open(traj_path, 'wb') as file:
+        with open(traj_path+human_path, 'wb') as file:
             pickle.dump(trajectories, file, pickle.HIGHEST_PROTOCOL)
-        with open(traj_path+'_agent', 'wb') as file:
+        with open(traj_path+human_path+'_agent', 'wb') as file:
             pickle.dump(human, file, pickle.HIGHEST_PROTOCOL)
 
 if 'on' in method :
@@ -57,9 +68,15 @@ if 'on' in method :
         with open(ds_on_path, 'wb') as file:
             pickle.dump(on_line_set, file, pickle.HIGHEST_PROTOCOL)
 
+try:
+    eval_path = f'{ROOT_DIR}/outputs/eval_set'
+    with open(eval_path, 'rb') as file:
+        eval_set = pickle.load(file)
+except:
+    eval_set = [env_generator_fn() for i in range(n_eval)]
+    with open(eval_path, 'wb') as file:
+        pickle.dump(eval_set, file, pickle.HIGHEST_PROTOCOL)
 
-with open(f'{ROOT_DIR}/outputs/eval_set', 'rb') as file:
-    eval_set = pickle.load(file)
 
 
 dir_name = f"{agent}_b{batch_size}_{'W' if entropy_weight > 0. else 'N'}e{dir_post_fix}_{'' if eval_tries == 1 else f'e{eval_tries}_'}h{estimation_noise}"

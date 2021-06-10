@@ -34,10 +34,11 @@ epsilon = eps_fn
 n_traj = 50000
 n_episodes = 50000
 
+n_eval = 1000
 eval_freq = 1000
 save_freq = 5000//batch_size
 eval_tries = 3
 
-agent = 'autoDec'
-method = 'on'
+agent = 'switch'
+method = 'off_on'
 entropy_weight = 0.01
