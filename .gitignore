@@ -2,7 +2,7 @@
 */__pycache__/*
 */__pycache__
 outputs/*
-
+results/*
 .vscode/settings.json
 .ssh/*
 heavy_init_traffic_level_test.png
@@ -17,3 +17,6 @@ agent/__pycache__/agents.cpython-38.pyc
 
 environments/__pycache__/env.cpython-38.pyc
 agent/__pycache__/agents.cpython-38.pyc
+__pycache__/definitions.cpython-38.pyc
+plot/__pycache__/__init__.cpython-38.pyc
+environments/__pycache__/env.cpython-38.pyc
