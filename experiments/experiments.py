@@ -25,7 +25,9 @@ def evaluate(switching_agent, acting_agents, eval_set, n_try=10, plt_path=None):
     eval_costs = []
     machine_picked_ratios = []
     for grid in eval_set:
-        cost, machine_picked = learn_evaluate(switching_agent, acting_agents, [grid], is_learn=False, ret_trajectory=False, n_try=n_try, plt_path=plt_path)
+        cost, machine_picked = learn_evaluate(switching_agent, acting_agents, [grid], is_learn=False, ret_trajectory=False, n_try=n_try)
+        if plt_path is not None:
+            grid.plot_trajectory(switching_agent, acting_agents, plt_path)
         eval_costs.append(cost)
         machine_picked_ratios.append(machine_picked)
     
