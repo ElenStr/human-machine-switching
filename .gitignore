@@ -8,10 +8,6 @@ results/*
 heavy_init_traffic_level_test.png
 light_init_traffic_level_test.png
 no-car_init_traffic_level_test.png
-outputs/agents/pre_trained_machine/machine_agent_off
-outputs/agents/pre_trained_machine/machine_agent_on
-outputs/agents/pre_trained_machine/machine_costs_off
-outputs/agents/pre_trained_machine/machine_costs_on
 environments/__pycache__/env.cpython-38.pyc
 agent/__pycache__/agents.cpython-38.pyc
 
