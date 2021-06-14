@@ -2,6 +2,7 @@ import random
 import numpy as np
 
 from plot.plot_path import HUMAN_COLOR, MACHINE_COLOR
+from environments.utils_env import *
 
 CELL_TYPES = ['road', 'grass', 'stone', 'car']
 TRAFFIC_LEVELS = ['no-car', 'light', 'heavy']
@@ -21,7 +22,6 @@ TRAFFIC_LEVEL_PROBS = {
 # default costs
 TYPE_COSTS = {'road': 0, 'grass': 2, 'stone': 4, 'car': 10}
 
-USE_GRASS_OBSTACLE = True
 
 class GridWorld:
     """
@@ -307,7 +307,7 @@ class Environment:
         n_state_features_1hot =  n_cell_types + depth*( n_traffic_levels + 1 + width*(n_cell_types + 1))
         return n_state_features_1hot
 
-    def generate_grid_world(self, width, height, init_traffic_level: str, depth=3):
+    def generate_grid_world(self, width, height, init_traffic_level: str, scerario_fn=lambda c,s,f:two_lanes_obstcales(c,s,f,'grass'), depth=3):
         """
         Assign each cell a type (i.e., 'road', 'grass', 'stone', or 'car')
         independently at random based on the traffic level.
@@ -327,32 +327,13 @@ class Environment:
         traffics = [init_traffic_level]
         cells = {}
         Environment.width = width
-        # DONE: choose everything but grass some times
-        grass_obstacle = USE_GRASS_OBSTACLE and random.random() <.5
-        for row in range(height):
+        for row in range(height):       
             traffic_probs = list(self.traffic_probs[traffics[row]].values())
             traffics.append(random.choices(self.traffic_levels, traffic_probs)[0])
-            for col in range(width):
-                cell_probs = list(self.type_probs[traffics[row]].values())
-                cells[col, row] = random.choices(self.cell_types, cell_probs)[0]
-                
-                if grass_obstacle and cells[col, row] == 'grass':
-                # remove grass cells since a grass obstacle will be added later
-                # grass cells will become with 0.5 road and 0.5 stone
-                    cells[col, row] = 'road' if random.random() <.5 else 'stone'
-
-
-
-        # Add random grass sequence in middle lane
-        # pick end-start in [2, depth] if machine view is L/3 rows
-        # choose start in [L/3(2?),L - depth - 1]
-                
-        if grass_obstacle:
-            n_grass_cells = random.randint(2, depth)
-            start = random.randint(height//3,height-depth - 1)
-            for r in range(start, start+n_grass_cells):
-                cells[1, r] = 'grass'
-
+        self.traffics = traffics
+        self.depth = depth
+        general_grid(cells,0,height//2 -1, self)
+        scerario_fn(cells, height//2 -1,height)
 
         middle_width = width // 2
         cells[middle_width, 0] = 'road'

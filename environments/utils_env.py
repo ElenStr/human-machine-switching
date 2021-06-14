@@ -3,82 +3,64 @@ Environment help functions.
 """
 
 import numpy as np
-from copy import copy
-import math
-from environments.env import CELL_TYPES, TRAFFIC_LEVELS
-# default width and height
-WIDTH = 3
+import random
+USE_GRASS_OBSTACLE = False
 
-def feature2onehot(value, n_onehot):
-    """
-    Parameters
-    ----------
-    value: int 
-        Scalar feature value
 
-    n_onehot: int
-        Number of possible feature values
-
-    Returns
-    -------
-    f_v: list
-        The onehot represantation of value
-    """
-    f_v = [0.]*n_onehot
-    f_v[n_onehot - value - 1] = 1.
-    return f_v
-
-def state2features(state, n_features, real_v=False):
-    """
-    Parameters
-    ----------
-    state: list of strings
-        Current cell type and traffic factor and cell types of next rows 
-
-    n_features: int
-        Number of features required by the network
+def general_grid(cells, start,finish, env):
     
-    real_v: bool
-        Return features as real values
+    grass_obstacle = USE_GRASS_OBSTACLE and random.random() <.5
+    for row in range(start,finish):
+        for col in range(env.width):
+            cell_probs = list(env.type_probs[env.traffics[row]].values())
+            cells[col, row] = random.choices(env.cell_types, cell_probs)[0]
+            if grass_obstacle and cells[col, row] == 'grass':
+            # remove grass cells since a grass obstacle will be added later
+            # grass cells will become with 0.5 road and 0.5 stone
+                cells[col, row] = 'road' if random.random() <.5 else 'stone'
 
-    Returns
-    -------
-    features: list of int
-        The state feature vector
-    """
+
+
+    # Add random grass sequence in middle lane
+    # pick end-start in [2, depth] if machine view is L/3 rows
+    # choose start in [L/3(2?),L - depth - 1]
+    height = finish - start
+    if grass_obstacle:
+        n_grass_cells = random.randint(2, env.depth)
+        start = random.randint(height//3,height-env.depth - 1)
+        for r in range(start, start+n_grass_cells):
+            cells[1, r] = 'grass'
+    
     
 
-    cell_t = np.array(CELL_TYPES+['wall'])
-    traffic_l = np.array(TRAFFIC_LEVELS)
-    features = []
-    feature = np.argwhere(cell_t == state[0])[0][0]
-    # TODO: onehot encoding for features
-    if real_v:
-        features.append((feature + 1)*0.2)
-    else:
-        features.extend(feature2onehot(feature, cell_t.size - 1))
-
-    for i in range(1,n_features):
-        if (i-1) % (WIDTH+1) == 0:
-            state_i =  state[i] if i <= len(state)-1 else 'not-available'
-            feature = np.argwhere(traffic_l == state_i)
-            # add value for no traffic for last states
-            feature = traffic_l.size if not feature.size else feature[0][0]
-            # 1 stands for not available
-            if real_v: 
-                features.append(feature + 2.)
-            else:
-                features.extend(feature2onehot(feature, traffic_l.size + 1))              
-
-
+def two_lanes_obstcales(cells, start, finish, obstacle_type, start_obst_mid=False):
+    for row in range(start, finish):
+        
+        if row==start:
+            # TODO: works only for width=3
+            cells[0, row] = 'road'
+            cells[1, row] = obstacle_type if start_obst_mid else 'road'
+            cells[2, row] = 'road' if start_obst_mid else obstacle_type
         else:
-            state_i =  state[i] if i <= len(state)-1 else 'wall'
-            feature = np.argwhere(cell_t == state_i)[0][0]
-            if real_v:
-                features.append((feature + 1.) * 0.2)
-            else:
-                features.extend(feature2onehot(feature, cell_t.size)) 
+            cells[0, row] = obstacle_type
+            cells[1, row] = obstacle_type
+            cells[2, row] = 'road'
 
+    
+        
+            
+def difficult_grid(cells, start, finish, obstacle_type, start_obst_mid=False):
+    
+    # TODO: works only for width=3
+    cells[0, start] = 'road'
+    cells[1, start] = obstacle_type if start_obst_mid else 'road'
+    cells[2, start] = 'road' if start_obst_mid else obstacle_type
+    for row in range(start+1,finish, step=2):        
+        cells[0, row] = obstacle_type
+        cells[1, row] = obstacle_type
+        cells[2, row] = 'road'
+        cells[0, row+1] = obstacle_type
+        cells[1, row+1] = 'road'
+        cells[2, row+1] = obstacle_type
 
-    return features
-
+        
