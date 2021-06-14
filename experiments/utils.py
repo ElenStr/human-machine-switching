@@ -52,7 +52,7 @@ def learn_evaluate(switching_agent: Agent, acting_agents, envs ,is_learn: bool, 
         d_tminus1 = np.zeros(batch_size)
         timestep = 0
         trajectory_cost = 0
-        machine_picked = 0
+        
         while True:
             timestep+=1
             td_errors = []
@@ -67,7 +67,7 @@ def learn_evaluate(switching_agent: Agent, acting_agents, envs ,is_learn: bool, 
 
                 d_t = switching_agent.take_action(current_state, is_learn)
                 option = acting_agents[d_t] 
-                machine_picked+=d_t
+                total_machine_picked.append(d_t)
                 if not d_t:  
                     action = option.take_action(current_state, d_tminus1[b])
                 else:
@@ -77,7 +77,6 @@ def learn_evaluate(switching_agent: Agent, acting_agents, envs ,is_learn: bool, 
                 
                 next_state, cost, finished = env.step(action)
                 if finished:
-                    total_machine_picked.append(machine_picked/(timestep*len(envs)))
                     break 
                 
 
@@ -185,6 +184,7 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory_batch , n
         Average total cost of the trajectory
     """
 
+    machine_picked = []
     for i in range(n_try):
 
         # switching_agent.F_t = np.zeros(trajectory_batch[0].shape[0])
@@ -206,6 +206,7 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory_batch , n
                 current_state, action, next_state, cost = t            
 
                 d_t = switching_agent.take_action(current_state, True)
+                machine_picked.append(d_t)
                 option = acting_agents[d_t]          
                             
                 c_tplus1 = cost + option.control_cost
@@ -305,7 +306,7 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory_batch , n
                         print('actor zero grad')
                     if not torch.all(list(acting_agents[1].network.parameters())[-1].grad < 1e3):
                         print('actor grad > 1e3')
-    
+    return np.mean(machine_picked)
 
             
             

@@ -8,9 +8,7 @@ import torch
 from collections import defaultdict
 
 from environments.env import Environment, GridWorld
-from environments.utils_env import state2features
 from networks.networks import ActorNet
-from copy import copy
 
 
 
@@ -37,7 +35,7 @@ class MachineDriverAgent(Agent):
         # n_state_features[1] is the network input size
         self.network = ActorNet(n_state_features[1], n_actions)
         self.optimizer = optimizer(self.network.parameters())
-        self.entropy_weight = entropy_weight
+        self.entropy_weight_0 = entropy_weight
         self.timestep = 0
         self.control_cost = c_M
         self.trainable = True
@@ -70,7 +68,7 @@ class MachineDriverAgent(Agent):
         """
             
         self.timestep+=1
-        self.entropy_weight = 1/self.timestep
+        self.entropy_weight = self.entropy_weight_0*1/self.timestep
         # weighting and delta must have been computed with torch.no_grad()
         
         policy_loss = weighting * delta * log_pi  + self.entropy_weight*entropy

@@ -79,6 +79,7 @@ def train(algos, trajectories, on_line_set,
     """
     algos_costs = defaultdict(lambda:[])
     machine_picked_ratios = defaultdict(lambda:[])
+    machine_picked_ratios_tr = defaultdict(lambda:[])
     if trajectories:
         ep_l = len(trajectories[0])
         trajectories = np.asarray(trajectories, dtype=object)
@@ -90,15 +91,16 @@ def train(algos, trajectories, on_line_set,
                 machine = acting_agents[1]
                 
                 #TODO learn off policy return sth useful maybe Q ?
-                learn_off_policy(switching_agent, acting_agents, np.resize(np.hstack(traj_batch), (ep_l, batch_size, 4)))
-
+                machine_picked_tr = learn_off_policy(switching_agent, acting_agents, np.resize(np.hstack(traj_batch), (ep_l, batch_size, 4)))
+                machine_picked_ratios_tr[algo].append(machine_picked_tr)
                 # print log
                 if verbose and ep % eval_freq == 0 and (ep // eval_freq > 0):
                     eval_cost, machine_picked = evaluate(switching_agent, acting_agents, eval_set, n_try=eval_tries)
                     print(f'{datetime.datetime.now()}, Off-policy, Episode {ep}, {algo} evaluation cost: {eval_cost}')
                     algos_costs[algo].append(eval_cost)
                     if 'switch' in algo or 'fxd' in algo:
-                        print(machine_picked)
+                        print(f'Avg times switch=1 in evaluation: {machine_picked}')
+                        print(f'Avg times switch=1 in training: {np.mean(machine_picked_ratios_tr[algo])}')
                         machine_picked_ratios[algo].append(machine_picked) 
 
                 # save agent
@@ -109,6 +111,7 @@ def train(algos, trajectories, on_line_set,
     if on_line_set:
         algos_costs = defaultdict(lambda:[])
         machine_picked_ratios = defaultdict(lambda:[])
+        machine_picked_ratios_tr = defaultdict(lambda:[])
         batched_online_set = np.resize(on_line_set, (len(on_line_set)//batch_size, batch_size))        
         for ep,grid_worlds in enumerate(batched_online_set):
             
@@ -117,8 +120,8 @@ def train(algos, trajectories, on_line_set,
                 switching_agent, acting_agents = agents
                 machine = acting_agents[1]
 
-                learn_evaluate(switching_agent, acting_agents, grid_worlds, batch_size=batch_size, is_learn=True)
-
+                _, machine_picked_tr = learn_evaluate(switching_agent, acting_agents, grid_worlds, batch_size=batch_size, is_learn=True)
+                machine_picked_ratios_tr[algo].append(machine_picked_tr)
                 # print log
                 if verbose and ep % eval_freq == 0 and (ep // eval_freq > 0):
                     eval_cost, machine_picked = evaluate(switching_agent, acting_agents, eval_set,n_try=eval_tries)
@@ -126,6 +129,7 @@ def train(algos, trajectories, on_line_set,
                     algos_costs[algo].append(eval_cost)
                     if 'switch' in algo or 'fxd' in algo:
                         print(machine_picked)
+                        print(np.mean(machine_picked_ratios_tr[algo]))
                         machine_picked_ratios[algo].append(machine_picked) 
 
 

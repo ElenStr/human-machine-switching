@@ -9,7 +9,6 @@ import torch
 
 from agent.agents import  Agent
 from networks.networks import CriticNet, OptionCriticNet
-from environments.utils_env import state2features
 from environments.env import Environment
 
 
