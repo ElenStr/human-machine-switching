@@ -55,7 +55,7 @@ def difficult_grid(cells, start, finish, obstacle_type, start_obst_mid=False):
     cells[0, start] = 'road'
     cells[1, start] = obstacle_type if start_obst_mid else 'road'
     cells[2, start] = 'road' if start_obst_mid else obstacle_type
-    for row in range(start+1,finish, step=2):        
+    for row in range(start+1,finish, 2):        
         cells[0, row] = obstacle_type
         cells[1, row] = obstacle_type
         cells[2, row] = 'road'

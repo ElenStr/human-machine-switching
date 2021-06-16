@@ -277,7 +277,7 @@ class GridWorld:
     
         if human_cf_costs:
             key = np.argmin(human_cf_costs)
-            for src, dst in human_cf_lines[key][:-1]:
+            for src, dst in human_cf_lines[key]:
                 plt_path.add_line(src, dst, HUMAN_COLOR)        
                         
 

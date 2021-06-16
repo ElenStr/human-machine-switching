@@ -37,8 +37,8 @@ n_episodes = 50000
 n_eval = 1000
 eval_freq = 1000
 save_freq = 5000//batch_size
-eval_tries = 3
+eval_tries = 1
 
-agent = 'switch'
+agent = 'auto1'
 method = 'off_on'
 entropy_weight = 0.01
