@@ -309,7 +309,7 @@ class Environment:
 
         return n_state_features_1hot
 
-    def generate_grid_world(self, width, height, init_traffic_level: str, scerario_fn=lambda c,s,f:two_lanes_obstcales(c,s,f,'grass'), depth=3):
+    def generate_grid_world(self, width, height, init_traffic_level: str, scenario_fn=lambda c,s,f:two_lanes_obstcales(c,s,f,'grass'), depth=3):
         """
         Assign each cell a type (i.e., 'road', 'grass', 'stone', or 'car')
         independently at random based on the traffic level.
@@ -335,7 +335,7 @@ class Environment:
         self.traffics = traffics
         self.depth = depth
         general_grid(cells,0,height//2 -1, self)
-        scerario_fn(cells, height//2 -1,height)
+        scenario_fn(cells, height//2 -1,height)
 
         middle_width = width // 2
         cells[middle_width, 0] = 'road'
