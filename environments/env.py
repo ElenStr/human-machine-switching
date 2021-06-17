@@ -137,20 +137,20 @@ class GridWorld:
         # if not in last row
         if x==0 and y<self.height-1:
             nxt = 2
-            state.append(self.traffic_levels[y+1])
+            # state.append(self.traffic_levels[y+1])
             state.append('wall')
             for r in range(2):
                 state.append(self.cell_types[r, y+1])
         elif x==self.width - 1 and y<self.height-1 :
             nxt = 2
-            state.append(self.traffic_levels[y+1])
+            # state.append(self.traffic_levels[y+1])
             for r in range(1,3):
                 state.append(self.cell_types[r, y+1])
             state.append('wall')
         # state includes min(depth, remaining rows ahead )
         upper_bound = min(self.depth, self.height-y -1) +1
         for i in range(nxt,upper_bound):
-            state.append(self.traffic_levels[y+i])            
+            # state.append(self.traffic_levels[y+i])            
             for r in range(3):
                 state.append(self.cell_types[r, y+i])
         return state
@@ -173,20 +173,20 @@ class GridWorld:
         # if not in last row
         if x==0 and y<self.height-1:
             nxt = 2
-            state.append(self.traffic_levels[y+1])
+            # state.append(self.traffic_levels[y+1])
             state.append('wall')
             for r in range(2):
                 state.append(self.cell_types[r, y+1])
         elif x==self.width - 1 and y<self.height-1 :
             nxt = 2
-            state.append(self.traffic_levels[y+1])
+            # state.append(self.traffic_levels[y+1])
             for r in range(1,3):
                 state.append(self.cell_types[r, y+1])
             state.append('wall')
         # state includes min(depth, remaining rows ahead )
         upper_bound = min(self.depth, self.height-y -1) +1
         for i in range(nxt,upper_bound):
-            state.append(self.traffic_levels[y+i])            
+            # state.append(self.traffic_levels[y+i])            
             for r in range(3):
                 state.append(self.cell_types[r, y+i])
         return state
@@ -298,13 +298,15 @@ class Environment:
 
     def n_state_strings(self, depth, width):
         """State size with string features"""
-        return 1 + depth*(width + 1)
+        return 1 + depth*(width)
     
     def n_state_one_hot(self, depth, width):
         """State size in 1-hot encoding"""
         n_cell_types = len(self.cell_types)
-        n_traffic_levels = len(self.traffic_levels)
-        n_state_features_1hot =  n_cell_types + depth*( n_traffic_levels + 1 + width*(n_cell_types + 1))
+        # n_traffic_levels = len(self.traffic_levels)
+        # n_state_features_1hot =  n_cell_types + depth*( n_traffic_levels + 1 + width*(n_cell_types + 1))
+        n_state_features_1hot =  n_cell_types + depth*( width*(n_cell_types + 1))
+
         return n_state_features_1hot
 
     def generate_grid_world(self, width, height, init_traffic_level: str, scerario_fn=lambda c,s,f:two_lanes_obstcales(c,s,f,'grass'), depth=3):
@@ -385,7 +387,7 @@ class Environment:
         
 
         cell_t = np.array(CELL_TYPES+['wall'])
-        traffic_l = np.array(TRAFFIC_LEVELS)
+        # traffic_l = np.array(TRAFFIC_LEVELS)
         features = []
         feature = np.argwhere(cell_t == state[0])[0][0]
         # TODO: onehot encoding for features
@@ -395,25 +397,25 @@ class Environment:
             features.extend(Environment.feature2net_input(feature, cell_t.size - 1))
 
         for i in range(1,n_features):
-            if (i-1) % (Environment.width+1) == 0:
-                state_i =  state[i] if i <= len(state)-1 else 'not-available'
-                feature = np.argwhere(traffic_l == state_i)
-                # add value for no traffic for last states
-                feature = traffic_l.size if not feature.size else feature[0][0]
-                # 1 stands for not available
-                if real_v: 
-                    features.append(feature + 2.)
-                else:
-                    features.extend(Environment.feature2net_input(feature, traffic_l.size + 1))              
+            # if (i-1) % (Environment.width+1) == 0:
+            #     state_i =  state[i] if i <= len(state)-1 else 'not-available'
+            #     # feature = np.argwhere(traffic_l == state_i)
+            #     # add value for no traffic for last states
+            #     # feature = traffic_l.size if not feature.size else feature[0][0]
+            #     # 1 stands for not available
+            #     if real_v: 
+            #         features.append(feature + 2.)
+            #     else:
+            #         features.extend(Environment.feature2net_input(feature, traffic_l.size + 1))              
 
 
+            # else:
+            state_i =  state[i] if i <= len(state)-1 else 'wall'
+            feature = np.argwhere(cell_t == state_i)[0][0]
+            if real_v:
+                features.append((feature + 1.) * 0.2)
             else:
-                state_i =  state[i] if i <= len(state)-1 else 'wall'
-                feature = np.argwhere(cell_t == state_i)[0][0]
-                if real_v:
-                    features.append((feature + 1.) * 0.2)
-                else:
-                    features.extend(Environment.feature2net_input(feature, cell_t.size)) 
+                features.extend(Environment.feature2net_input(feature, cell_t.size)) 
 
 
         return features
