@@ -4,11 +4,11 @@ from torch.nn import functional as F
 import numpy as np
 
 def initialize_layer(layer, hidden,w_scale=1.):
-    nn.init.normal_(layer.weight.data, std=1/hidden)
+    nn.init.normal_(layer.weight.data)#, std=1/hidden)
     # layer.weight.data.mul_(w_scale)
     nn.init.constant_(layer.bias.data, 0)
-    return torch.nn.utils.weight_norm(layer)
-    # return layer
+    # return torch.nn.utils.weight_norm(layer)
+    return layer
 
 class Network(nn.Module):
     """ 1-layer architecture """
