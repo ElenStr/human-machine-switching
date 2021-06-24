@@ -9,7 +9,7 @@ from collections import defaultdict
 
 from environments.env import Environment, GridWorld
 from networks.networks import ActorNet
-
+from config import setting
 
 
 class Agent:
@@ -48,7 +48,7 @@ class MachineDriverAgent(Agent):
         """Return input batch  for training"""
         pass
 
-    def update_policy(self, weighting, delta, log_pi, entropy, do_update=True):
+    def update_policy(self, weighting, delta, log_pi, entropy, use_entropy=True):
         """
         Implement train step 
 
@@ -67,8 +67,11 @@ class MachineDriverAgent(Agent):
             The action taken
         """
             
-        self.timestep+=1
-        self.entropy_weight = self.entropy_weight_0/self.timestep
+        if use_entropy:
+            self.timestep+=1
+            self.entropy_weight = self.entropy_weight_0/self.timestep
+        else:
+            self.entropy_weight = 0
         # weighting and delta must have been computed with torch.no_grad()
         
         policy_loss = weighting * delta * log_pi  + self.entropy_weight*entropy
@@ -100,7 +103,8 @@ class MachineDriverAgent(Agent):
             The action policy distribution given form the network
         """
         # TODO: make machine worse than human+machine e.g. same feature value for road-grass
-        # curr_state = [cur_st.replace('grass', 'road') for cur_st in curr_state]
+        if setting == 2:
+            curr_state = [cur_st.replace('grass', 'road') for cur_st in curr_state]
         state_feature_vector  = Environment.state2features(curr_state, self.n_state_features)
         actions_logits = self.network(state_feature_vector)
         policy = torch.distributions.Categorical(logits=actions_logits)
@@ -156,7 +160,12 @@ class NoisyDriverAgent(Agent):
         ''' 
         
         switch_noise = self.noise_sw if switch else 0.  
-        estimation_noises = [self.noise_sd for nxt_cell_type in curr_state[1:4]]
+        if setting == 2:
+            estimation_noises = [4. if nxt_cell_type=='car' else self.noise_sd for nxt_cell_type in curr_state[1:4]]
+        else:
+            estimation_noises = [self.noise_sd for _ in curr_state[1:4]]
+
+
         noisy_next_cell_costs = [self.type_costs[nxt_cell_type] + random.gauss(0,estimation_noise) + random.gauss(0, switch_noise) if nxt_cell_type!='wall' else np.inf for nxt_cell_type, estimation_noise in zip(curr_state[1:4], estimation_noises)]
         # if end of episode is reached
         if not noisy_next_cell_costs:
