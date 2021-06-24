@@ -239,7 +239,7 @@ class GridWorld:
             current_state = self.current_state()
             src = self.current_coord
 
-            d_t = switching_agent.take_action(current_state, False)
+            d_t = switching_agent.take_action(current_state, False, True)
             option = acting_agents[d_t] 
             machine_picked+=d_t
             if not d_t:  
