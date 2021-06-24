@@ -3,8 +3,8 @@ from torch import nn, as_tensor
 from torch.nn import functional as F 
 import numpy as np
 
-def initialize_layer(layer, hidden,w_scale=1.):
-    nn.init.normal_(layer.weight.data)#, std=1/hidden)
+def initialize_layer(layer,w_scale=1.):
+    nn.init.normal_(layer.weight.data, std=1.)
     # layer.weight.data.mul_(w_scale)
     nn.init.constant_(layer.bias.data, 0)
     # return torch.nn.utils.weight_norm(layer)
@@ -17,8 +17,8 @@ class Network(nn.Module):
         #TODO hidden = f(dim_in)
         hidden = int(2**(np.ceil(np.log2(dim_in)) + 1))
         self.input_dim = dim_in
-        self.inp_layer = initialize_layer(nn.Linear(dim_in, hidden), dim_in)
-        self.fc_layer = initialize_layer(nn.Linear(hidden, dim_out), hidden)
+        self.inp_layer = initialize_layer(nn.Linear(dim_in, hidden))
+        self.fc_layer = initialize_layer(nn.Linear(hidden, dim_out))
 
     def forward(self, features, activation):
         """ features is the featurized input vector"""         
