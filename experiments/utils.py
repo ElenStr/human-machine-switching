@@ -65,7 +65,7 @@ def learn_evaluate(switching_agent: Agent, acting_agents, envs ,is_learn: bool, 
                 current_state = env.current_state()
                 
 
-                d_t = switching_agent.take_action(current_state, is_learn)
+                d_t = switching_agent.take_action(current_state, is_learn, online=True)
                 option = acting_agents[d_t] 
                 total_machine_picked.append(d_t)
                 if not d_t:  
@@ -299,7 +299,7 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory_batch , n
                 # deltas = torch.as_tensor(deltas)
                 log_pis = torch.stack(log_pis)
                 entropies = torch.stack(entropies)
-                acting_agents[1].update_policy(actor_emphatic_weightings, deltas, log_pis, entropies)
+                acting_agents[1].update_policy(actor_emphatic_weightings, deltas, log_pis, entropies, use_entropy=False)
                 
                 if torch.is_tensor(list(acting_agents[1].network.parameters())[0].grad):
                     if not torch.any(list(acting_agents[1].network.parameters())[0].grad > 0.):
