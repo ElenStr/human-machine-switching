@@ -25,7 +25,7 @@ def env_generator_fn(n_grids):
 # Setting and agent config
 setting = 2
 agent = f'switch{setting}{scen_postfix}'
-method = 'on'
+method = 'off_on'
 entropy_weight = 0.01
 
 # Dataset sizes for off and online training
@@ -46,10 +46,11 @@ lr = 1e-4
 # Switching Agent
 # epsilon schedule
 def eps_fn(timestep):
-    if (timestep//20) < n_traj*n_try:
+    off_steps = n_traj*n_try if 'off' in method else 0
+    if timestep < off_steps*20 :
         epsilon = 0.1
     else:
-        epsilon = 0.1* 1 / sqrt(timestep - n_traj*n_try*20+1)
+        epsilon = 0.1* 1 / sqrt(timestep - off_steps*20+1)
     return epsilon
 
 epsilon = eps_fn 
