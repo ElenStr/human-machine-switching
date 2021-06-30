@@ -11,7 +11,7 @@ from plot.plot_path import HUMAN_COLOR, MACHINE_COLOR, PlotPath
  
 
 
-def learn_evaluate(switching_agent: Agent, acting_agents, envs ,is_learn: bool, ret_trajectory=False, n_try=1, batch_size=1):
+def learn_evaluate(switching_agent: Agent, acting_agents, envs ,is_learn: bool, ret_trajectory=False, grid_id=0, n_try=1, batch_size=1):
     """
     Learn (on policy) or evaluate overall policy in a grid environment.
 
@@ -33,6 +33,10 @@ def learn_evaluate(switching_agent: Agent, acting_agents, envs ,is_learn: bool, 
 
     ret_trajectory: bool
         To gather and return or not the trajectory
+    
+    grid_id: int
+        Used only if ret_trajectory==True, the unique grid id for which 
+        human policy distribution approximation is computed
 
     Returns
     -------
@@ -43,10 +47,13 @@ def learn_evaluate(switching_agent: Agent, acting_agents, envs ,is_learn: bool, 
     total_machine_picked =[]
     
     if ret_trajectory:
-        trajectory = []
+        trajectories = []
 
    
-    for i in range(n_try):       
+    for i in range(n_try):
+        # assuming batch = 1 if ret_trajectory
+        if ret_trajectory:
+            trajectory = []       
         for env in envs:
             env.reset()
         d_tminus1 = np.zeros(batch_size)
@@ -82,7 +89,7 @@ def learn_evaluate(switching_agent: Agent, acting_agents, envs ,is_learn: bool, 
 
                 c_tplus1 = cost + option.control_cost
                 if ret_trajectory:
-                    acting_agents[0].update_policy(current_state,action)
+                    acting_agents[0].update_policy(current_state,action, grid_id)
                     trajectory.append((current_state, action, next_state, cost))
                 if is_learn:
                     if switching_agent.trainable:
@@ -150,19 +157,20 @@ def learn_evaluate(switching_agent: Agent, acting_agents, envs ,is_learn: bool, 
 
 
             trajectory_cost += c_tplus1            
-
+        if ret_trajectory:
+            trajectories.append(trajectory)
             
         total_costs.append(trajectory_cost)
    
     if ret_trajectory:
-        return trajectory
+        return trajectories
                     
 
     return np.mean(total_costs), np.mean(total_machine_picked)
 
 
 
-def learn_off_policy(switching_agent: Agent, acting_agents, trajectory_batch , n_try=1, plt_path=None):
+def learn_off_policy(switching_agent: Agent, acting_agents, trajectory_batch,grid_id , n_try=1, plt_path=None):
     """
     Learn  overall policy off-policy in a grid environment.
 
@@ -177,6 +185,8 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory_batch , n
     trajectory_batch: array 
         The trajectory batch induced by the behavior policy. 
         
+    grid_id: int
+        The grid_id from which the trajectory was recorded.
 
     Returns
     -------
@@ -187,8 +197,7 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory_batch , n
     machine_picked = []
     for i in range(n_try):
 
-        # switching_agent.F_t = np.zeros(trajectory_batch[0].shape[0])
-        # acting_agents[1].M_t = np.zeros(trajectory_batch[0].shape[0])
+        
         first_step = np.ones(trajectory_batch[0].shape[0])
         for t_batch in trajectory_batch:
             critic_emphatic_weightings = []
@@ -226,7 +235,7 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory_batch , n
                     
                     td_error = c_tplus1 + v_tplus1 - v_t
 
-                    mu_t = acting_agents[0].get_policy_approximation(current_state, action)
+                    mu_t = acting_agents[0].get_policy_approximation(current_state, action, grid_id)
                     
                     policy = acting_agents[1].take_action(current_state)[1]
                     with torch.no_grad():
@@ -313,7 +322,7 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory_batch , n
 
     
 
-def gather_human_trajectories(human: Agent, env_gen: Environment, n_episodes: int,**env_params):
+def gather_human_trajectories(human: Agent, env_gen: Environment, n_episodes: int, n_try: int ,**env_params):
     """ 
     Return trajectories induced by human acting alone
 
@@ -327,6 +336,9 @@ def gather_human_trajectories(human: Agent, env_gen: Environment, n_episodes: in
 
     n_episodes: int
         The number of episodes
+
+    n_try: int
+        The number of rollouts in every trajectory
 
     env_params: dict of ('parameter_name', parameter_value)
         The gridworld parameters
@@ -343,8 +355,8 @@ def gather_human_trajectories(human: Agent, env_gen: Environment, n_episodes: in
     
     for ep in range(n_episodes):
         env = env_gen.generate_grid_world(**env_params)
-        traj = learn_evaluate(fixed_switch, [human], [env], is_learn = False, ret_trajectory=True)
-        trajectories.append(traj)
+        traj = learn_evaluate(fixed_switch, [human], [env], is_learn = False, ret_trajectory=True, n_try=n_try)
+        trajectories.extend(traj)
     return trajectories
 
 

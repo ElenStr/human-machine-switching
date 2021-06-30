@@ -90,8 +90,8 @@ def train(algos, trajectories, on_line_set,
                 switching_agent, acting_agents = agents
                 machine = acting_agents[1]
                 
-                #TODO learn off policy return sth useful maybe Q ?
-                machine_picked_tr = learn_off_policy(switching_agent, acting_agents, np.resize(np.hstack(traj_batch), (ep_l, batch_size, 4)))
+                #TODO now batch must contain trajecotries from same grid
+                machine_picked_tr = learn_off_policy(switching_agent, acting_agents, np.resize(np.hstack(traj_batch), (ep_l, batch_size, 4)), ep-1)
                 machine_picked_ratios_tr[algo].append(machine_picked_tr)
                 # print log
                 if verbose and ep % eval_freq == 0 and (ep // eval_freq > 0):

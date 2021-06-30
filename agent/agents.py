@@ -116,7 +116,7 @@ def dd_init():
     return [0]*3
 
 class NoisyDriverAgent(Agent):
-    def __init__(self, env: Environment, noise_sd: float, noise_sw=.0, c_H=0.):
+    def __init__(self, env: Environment, prob_wrong: float, noise_sw=.0, c_H=0.):
         """
         A noisy driver, which chooses the cell with the lowest noisy estimated cost.
 
@@ -124,32 +124,33 @@ class NoisyDriverAgent(Agent):
         ----------
         env: Environment
 
-        noise_sd : float
-            Standard deviation of the Gaussian noise (i.e., `N(0, noise_sd)`)
+        prob_wrong : float
+            Probability of picking action at random
         
         noise_sw : float
             Standard deviation of the Gaussian noise beacuse of switching from Machine to Human
         """
         super(NoisyDriverAgent, self).__init__()
-        self.noise_sd = noise_sd
+        self.noise_sd = prob_wrong
+        self.prob_wrong = prob_wrong
         self.noise_sw = noise_sw
         self.type_costs = env.type_costs
         self.control_cost = c_H
         self.trainable = False
         
-        self.policy_approximation = defaultdict(dd_init)
+        self.policy_approximation = defaultdict(defaultdict(dd_init))
 
-    def update_policy(self, state, action):
+    def update_policy(self, state, action, grid_id):
         """Update policy approximation, needed for the off policy stage"""
         # The human action in reality depends only on next row
-        human_obs = tuple(state[1:4] )
-        self.policy_approximation[human_obs][action]+=1
+        human_obs = tuple(state)
+        self.policy_approximation[grid_id][human_obs][action]+=1
             
-    def get_policy_approximation(self, state, action):
+    def get_policy_approximation(self, state, action, grid_id):
         """ The approximated action policy distribution given the state """
-        human_obs = tuple(state[1:4] )
-        total_state_visit = sum(self.policy_approximation[human_obs])
-        p_human_a_s = self.policy_approximation[human_obs][action] / total_state_visit
+        human_obs = tuple(state)
+        total_state_visit = sum(self.policy_approximation[grid_id][human_obs])
+        p_human_a_s = self.policy_approximation[grid_id][human_obs][action] / total_state_visit
         return p_human_a_s
 
 
@@ -165,18 +166,28 @@ class NoisyDriverAgent(Agent):
         else:
             estimation_noises = [self.noise_sd for _ in curr_state[1:4]]
 
-
-        noisy_next_cell_costs = [self.type_costs[nxt_cell_type] + random.gauss(0,estimation_noise) + random.gauss(0, switch_noise) if nxt_cell_type!='wall' else np.inf for nxt_cell_type, estimation_noise in zip(curr_state[1:4], estimation_noises)]
+        if setting==2:
+            for cell_type, i in enumerate(curr_state[1:4]):
+                if cell_type == 'car' and random.random() < 0.5:
+                    curr_state[i+1] = 'road'
+        # noisy_next_cell_costs = [self.type_costs[nxt_cell_type] + random.gauss(0,estimation_noise) + random.gauss(0, switch_noise) if nxt_cell_type!='wall' else np.inf for nxt_cell_type, estimation_noise in zip(curr_state[1:4], estimation_noises)]
+        noisy_next_cell_costs = [self.type_costs[nxt_cell_type] if nxt_cell_type!='wall' else np.inf for nxt_cell_type in curr_state[1:4]]
         # if end of episode is reached
         if not noisy_next_cell_costs:
             return random.randint(0,2)
+
         min_estimated_cost = np.min(noisy_next_cell_costs) 
         # ties are broken randomly
         possible_actions = np.argwhere(noisy_next_cell_costs == min_estimated_cost).flatten()
         n_possible_actions = possible_actions.size
-        
         action = random.choices(possible_actions, [1/n_possible_actions]*n_possible_actions)[0]
+        if random.random() < self.prob_wrong:
+            action = random.choices(range(3), [1/3, 1/3, 1/3])[0]
+
+        
         return action
+      
+
 
 
 class RandomDriverAgent(Agent):
@@ -192,12 +203,12 @@ class RandomDriverAgent(Agent):
     def update_policy(self, state, action):
         """Update policy approximation, needed for the off policy stage"""
         # The human action in reality depends only on next row
-        human_obs = tuple(state[1:4] )
+        human_obs = tuple(state )
         self.policy_approximation[human_obs][action]+=1
             
     def get_policy_approximation(self, state, action):
         """ The approximated action policy distribution given the state """
-        human_obs = tuple(state[1:4] )
+        human_obs = tuple(state )
         total_state_visit = sum(self.policy_approximation[human_obs])
         p_human_a_s = self.policy_approximation[human_obs][action] / total_state_visit
         return p_human_a_s
