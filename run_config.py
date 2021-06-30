@@ -12,6 +12,7 @@ import numpy as np
 import random 
 import torch
 import pickle
+import sys
 from copy import deepcopy
 
 
@@ -19,10 +20,10 @@ np.random.seed(12345678)
 random.seed(12345678)
 torch.manual_seed(12345678)
 
-env_generator = Environment()
-env_params = {'width' : width, 'height':height, 'init_traffic_level': init_traffic_level, 'depth': depth}
-env_generator_fn = lambda:env_generator.generate_grid_world(**env_params)
+
 dir_post_fix = ''
+traj_post_fx = '_pureState'
+
 trajectories = []
 on_line_set = []
 human = None
@@ -36,44 +37,49 @@ if not os.path.exists(res_dir):
 
 if 'off' in method:
     traj_path = f'{ROOT_DIR}/outputs/trajectories'
-    human_path = f'/human_{estimation_noise}_{switching_noise}_{init_traffic_level}_trajectories_{n_traj}'
+    human_path = f'/human{setting}_{estimation_noise}_{switching_noise}_{init_traffic_level}_trajectories_{n_traj}'
     dir_post_fix = f'_off_D{str(n_traj)[:-3]}K'
     try:
-        with open(traj_path+human_path, 'rb') as file:
+        with open(traj_path+human_path+traj_post_fx+scen_postfix, 'rb') as file:
             trajectories = pickle.load(file)
-        with open(traj_path+human_path+'_agent', 'rb') as file:
+        with open(traj_path+human_path+'_agent'+traj_post_fx+scen_postfix, 'rb') as file:
             human = pickle.load(file)
     except:
         if not os.path.exists(traj_path):
             os.mkdir(traj_path)
-        human  = NoisyDriverAgent(env_generator, noise_sd=estimation_noise, noise_sw=switching_noise, c_H=c_H)
-        trajectories = gather_human_trajectories(human, env_generator, n_traj,**env_params)
+        human  = NoisyDriverAgent(env_generator, prob_wrong=estimation_noise, noise_sw=switching_noise, c_H=c_H)
+        trajectories = []
+        n_grids_per_scenario = n_traj // len(scenarios)
+        for scen_fn in scenarios:
+            all_env_params = {'scenario_fn': scen_fn, **env_params}
+            traj_sc = gather_human_trajectories(human, env_generator,n_grids_per_scenario,n_try ,**all_env_params) 
+            trajectories.extend(traj_sc)
         
-        with open(traj_path+human_path, 'wb') as file:
+        with open(traj_path+human_path+traj_post_fx+scen_postfix, 'wb') as file:
             pickle.dump(trajectories, file, pickle.HIGHEST_PROTOCOL)
-        with open(traj_path+human_path+'_agent', 'wb') as file:
+        with open(traj_path+human_path+'_agent'+traj_post_fx+scen_postfix, 'wb') as file:
             pickle.dump(human, file, pickle.HIGHEST_PROTOCOL)
 
 if 'on' in method :
-    ds_on_path = f'{ROOT_DIR}/outputs/on_line_set_{n_episodes}_{init_traffic_level}'
+    ds_on_path = f'{ROOT_DIR}/outputs/on_line_set_{n_episodes}_{init_traffic_level}{scen_postfix}'
     dir_post_fix += f'_on_D{str(n_episodes)[:-3]}K'
     if human is None:
-        human = NoisyDriverAgent(env_generator, noise_sd=estimation_noise, noise_sw=switching_noise, c_H=c_H)
+        human = NoisyDriverAgent(env_generator, prob_wrong=estimation_noise, noise_sw=switching_noise, c_H=c_H)
 
     try:
         with open(ds_on_path, 'rb') as file:
             on_line_set = pickle.load(file)
     except:
-        on_line_set = [env_generator_fn() for i in range(n_episodes)]
+        on_line_set = env_generator_fn(n_episodes)
         with open(ds_on_path, 'wb') as file:
             pickle.dump(on_line_set, file, pickle.HIGHEST_PROTOCOL)
 
 try:
-    eval_path = f'{ROOT_DIR}/outputs/eval_set'
+    eval_path = f'{ROOT_DIR}/outputs/eval_set{scen_postfix}'
     with open(eval_path, 'rb') as file:
         eval_set = pickle.load(file)
 except:
-    eval_set = [env_generator_fn() for i in range(n_eval)]
+    eval_set = env_generator_fn(n_eval)
     with open(eval_path, 'wb') as file:
         pickle.dump(eval_set, file, pickle.HIGHEST_PROTOCOL)
 
@@ -99,7 +105,7 @@ else:
 
 if 'fxd' in agent:
     # TODO make it work for any method of auto, now works only for same auto and fxd methods
-    machine_agent_name = 'auto_'+'_'.join(list(filter(lambda x: x!='e3', dir_name.split('_')[1:])))
+    machine_agent_name = f'auto{setting}{scen_postfix}_'+'_'.join(list(filter(lambda x: x!='e3', dir_name.split('_')[1:])))
     machine_dir = f'{ROOT_DIR}/results/{machine_agent_name}/actor_agent_off'
     try:
         with open(machine_dir, 'rb') as file:
@@ -114,8 +120,26 @@ if 'fxd' in agent:
         machine = machine_algo[machine_agent_name][1][1]
     
     machine.trainable = False
-
+if 'pre' in agent:
+    # TODO make it work for any method of auto, now works only for same auto and fxd methods
+    machine_agent_name = f'autopre{setting}{scen_postfix}_'+'_'.join(list(filter(lambda x: x!='e3', dir_name.split('_')[1:])))
+    machine_dir = f'{ROOT_DIR}/results/{machine_agent_name}/actor_agent_off'
+    try:
+        with open(machine_dir, 'rb') as file:
+            machine = pickle.load(file) 
+            
+    except:
+        if not os.path.exists(machine_dir):
+            os.mkdir( f'{ROOT_DIR}/results/{machine_agent_name}')
+        machine_only = FixedSwitchingMachine(n_state_features, optimizer_fn, c_M=c_M, batch_size=batch_size)
+        machine_algo = {machine_agent_name: (machine_only, [human, machine])}
+        machine_algo, costs = train(machine_algo, trajectories[:50000],[], eval_set, eval_freq,  save_freq, batch_size=batch_size, eval_tries=1)
+        machine = machine_algo[machine_agent_name][1][1]
 
 algo = {dir_name: (switch_agent, [human, machine])}
-algo, costs = train(algo, trajectories, on_line_set, eval_set, eval_freq, save_freq, batch_size=batch_size, eval_tries=eval_tries)
+orig_stdout = sys.stdout
+with open(f'{ROOT_DIR}/{dir_name}.out','w', buffering=1) as f:
+    sys.stdout = f
+    algo, costs = train(algo, trajectories, on_line_set, eval_set, eval_freq, save_freq, batch_size=batch_size, eval_tries=eval_tries)
+    sys.stdout = orig_stdout
 
