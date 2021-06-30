@@ -138,19 +138,19 @@ class NoisyDriverAgent(Agent):
         self.control_cost = c_H
         self.trainable = False
         
-        self.policy_approximation = defaultdict(defaultdict(dd_init))
+        self.policy_approximation = defaultdict(dd_init)
 
     def update_policy(self, state, action, grid_id):
         """Update policy approximation, needed for the off policy stage"""
         # The human action in reality depends only on next row
-        human_obs = tuple(state)
-        self.policy_approximation[grid_id][human_obs][action]+=1
+        human_obs = tuple(state)        
+        self.policy_approximation[grid_id,human_obs][action]+=1
             
     def get_policy_approximation(self, state, action, grid_id):
         """ The approximated action policy distribution given the state """
         human_obs = tuple(state)
-        total_state_visit = sum(self.policy_approximation[grid_id][human_obs])
-        p_human_a_s = self.policy_approximation[grid_id][human_obs][action] / total_state_visit
+        total_state_visit = sum(self.policy_approximation[grid_id,human_obs])
+        p_human_a_s = self.policy_approximation[grid_id,human_obs][action] / total_state_visit
         return p_human_a_s
 
 

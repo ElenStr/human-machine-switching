@@ -11,7 +11,7 @@ from plot.plot_path import HUMAN_COLOR, MACHINE_COLOR, PlotPath
  
 
 
-def learn_evaluate(switching_agent: Agent, acting_agents, envs ,is_learn: bool, ret_trajectory=False, grid_id=0, n_try=1, batch_size=1):
+def learn_evaluate(switching_agent: Agent, acting_agents, envs ,is_learn: bool, grid_id=0,ret_trajectory=False,  n_try=1, batch_size=1):
     """
     Learn (on policy) or evaluate overall policy in a grid environment.
 
@@ -49,7 +49,6 @@ def learn_evaluate(switching_agent: Agent, acting_agents, envs ,is_learn: bool, 
     if ret_trajectory:
         trajectories = []
 
-   
     for i in range(n_try):
         # assuming batch = 1 if ret_trajectory
         if ret_trajectory:
@@ -90,7 +89,7 @@ def learn_evaluate(switching_agent: Agent, acting_agents, envs ,is_learn: bool, 
                 c_tplus1 = cost + option.control_cost
                 if ret_trajectory:
                     acting_agents[0].update_policy(current_state,action, grid_id)
-                    trajectory.append((current_state, action, next_state, cost))
+                    trajectory.append((current_state, action, next_state, cost, grid_id))
                 if is_learn:
                     if switching_agent.trainable:
                         next_features = Environment.state2features(next_state, switching_agent.n_state_features) 
@@ -170,7 +169,7 @@ def learn_evaluate(switching_agent: Agent, acting_agents, envs ,is_learn: bool, 
 
 
 
-def learn_off_policy(switching_agent: Agent, acting_agents, trajectory_batch,grid_id , n_try=1, plt_path=None):
+def learn_off_policy(switching_agent: Agent, acting_agents, trajectory_batch, n_try=1, plt_path=None):
     """
     Learn  overall policy off-policy in a grid environment.
 
@@ -185,9 +184,7 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory_batch,gri
     trajectory_batch: array 
         The trajectory batch induced by the behavior policy. 
         
-    grid_id: int
-        The grid_id from which the trajectory was recorded.
-
+    
     Returns
     -------
     total_cost : int
@@ -212,8 +209,7 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory_batch,gri
             for b,t in enumerate(t_batch):
                 # print(t)
 
-                current_state, action, next_state, cost = t            
-
+                current_state, action, next_state, cost, grid_id = t            
                 d_t = switching_agent.take_action(current_state, True)
                 machine_picked.append(d_t)
                 option = acting_agents[d_t]          
@@ -355,7 +351,7 @@ def gather_human_trajectories(human: Agent, env_gen: Environment, n_episodes: in
     
     for ep in range(n_episodes):
         env = env_gen.generate_grid_world(**env_params)
-        traj = learn_evaluate(fixed_switch, [human], [env], is_learn = False, ret_trajectory=True, n_try=n_try)
+        traj = learn_evaluate(fixed_switch, [human], [env], is_learn = False, ret_trajectory=True, grid_id=ep, n_try=n_try)
         trajectories.extend(traj)
     return trajectories
 

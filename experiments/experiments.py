@@ -83,7 +83,7 @@ def train(algos, trajectories, on_line_set,
     if trajectories:
         ep_l = len(trajectories[0])
         trajectories = np.asarray(trajectories, dtype=object)
-        batched_trajectories = np.resize(trajectories, (len(trajectories)//batch_size, batch_size, ep_l, 4) )
+        batched_trajectories = np.resize(trajectories, (len(trajectories)//batch_size, batch_size, ep_l, 5) )
         for ep,traj_batch in enumerate(batched_trajectories):
             ep+=1
             for algo, agents in algos.items():
@@ -91,7 +91,7 @@ def train(algos, trajectories, on_line_set,
                 machine = acting_agents[1]
                 
                 #TODO now batch must contain trajecotries from same grid
-                machine_picked_tr = learn_off_policy(switching_agent, acting_agents, np.resize(np.hstack(traj_batch), (ep_l, batch_size, 4)), ep-1)
+                machine_picked_tr = learn_off_policy(switching_agent, acting_agents, np.resize(np.hstack(traj_batch), (ep_l, batch_size, 5)))
                 machine_picked_ratios_tr[algo].append(machine_picked_tr)
                 # print log
                 if verbose and ep % eval_freq == 0 and (ep // eval_freq > 0):
