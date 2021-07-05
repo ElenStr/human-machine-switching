@@ -1,6 +1,7 @@
 """
 Implementation of the human and machine policies in the paper
 """
+from copy import copy
 import random
 import numpy as np
 import math
@@ -163,21 +164,26 @@ class NoisyDriverAgent(Agent):
         ''' 
         
         switch_noise = self.noise_sw if switch else 0.  
-        
-        if random.random() < self.prob_wrong:
-            action = random.choices(range(3), [1/3, 1/3, 1/3])[0]
-            return action
-
+        p_choose = random.random()
+        p_ignore = random.random()
+        curr_state_for_human = copy(curr_state)
         if self.setting==2:
-            for cell_type, i in enumerate(curr_state[1:4]):
-                if cell_type == 'car' and random.random() < 0.5:
-                    curr_state[i+1] = 'road'
+            for i, cell_type in enumerate(curr_state[1:4]):                
+                if cell_type == 'car' and p_ignore < 0.5:                    
+                    curr_state_for_human[i+1] = 'road'
         # noisy_next_cell_costs = [self.type_costs[nxt_cell_type] + random.gauss(0,estimation_noise) + random.gauss(0, switch_noise) if nxt_cell_type!='wall' else np.inf for nxt_cell_type, estimation_noise in zip(curr_state[1:4], estimation_noises)]
-        noisy_next_cell_costs = [self.type_costs[nxt_cell_type] if nxt_cell_type!='wall' else np.inf for nxt_cell_type in curr_state[1:4]]
+        noisy_next_cell_costs = [self.type_costs[nxt_cell_type] if nxt_cell_type!='wall' else np.inf for nxt_cell_type in curr_state_for_human[1:4]]
         # if end of episode is reached
-        if not noisy_next_cell_costs:
-            print('Not reached')
+        if not noisy_next_cell_costs:            
             return random.randint(0,2)
+        if p_choose < self.prob_wrong:
+            if curr_state[1] == 'wall':
+                action = random.choices(range(2), [1/2, 1/2])[0] + 1
+            elif curr_state[3] == 'wall':
+                action = random.choices(range(2), [1/2, 1/2])[0] 
+            else:
+                action = random.choices(range(3), [1/3, 1/3, 1/3])[0]
+            return action
 
         min_estimated_cost = np.min(noisy_next_cell_costs) 
         # ties are broken randomly
