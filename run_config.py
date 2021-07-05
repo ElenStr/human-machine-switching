@@ -37,8 +37,8 @@ if not os.path.exists(res_dir):
 
 if 'off' in method:
     traj_path = f'{ROOT_DIR}/outputs/trajectories'
-    human_path = f'/human{setting}_{estimation_noise}_{switching_noise}_{init_traffic_level}_trajectories_{n_traj}'
-    dir_post_fix = f'_off_D{str(n_traj)[:-3]}K'
+    human_path = f'/human{setting}_{estimation_noise}_{switching_noise}_{init_traffic_level}_trajectories_{n_traj}_{n_try}'
+    dir_post_fix = f'_off_D{n_traj / 1000}K{n_try}R'
     try:
         with open(traj_path+human_path+traj_post_fx+scen_postfix, 'rb') as file:
             trajectories = pickle.load(file)
@@ -62,7 +62,7 @@ if 'off' in method:
 
 if 'on' in method :
     ds_on_path = f'{ROOT_DIR}/outputs/on_line_set_{n_episodes}_{init_traffic_level}{scen_postfix}'
-    dir_post_fix += f'_on_D{str(n_episodes)[:-3]}K'
+    dir_post_fix += f'_on_D{n_episodes/1000}K'
     if human is None:
         human = NoisyDriverAgent(env_generator, prob_wrong=estimation_noise, noise_sw=switching_noise, c_H=c_H)
 
