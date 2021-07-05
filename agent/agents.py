@@ -9,7 +9,7 @@ from collections import defaultdict
 
 from environments.env import Environment, GridWorld
 from networks.networks import ActorNet
-from config import setting
+
 
 
 class Agent:
@@ -29,7 +29,7 @@ class Agent:
         """Return an action based on the policy"""
 
 class MachineDriverAgent(Agent):
-    def __init__(self, n_state_features, n_actions, optimizer, c_M=0., entropy_weight=0.01, batch_size=1):
+    def __init__(self, n_state_features, n_actions, optimizer, setting=1, c_M=0., entropy_weight=0.01, batch_size=1):
         """Initialize network and hyperparameters"""
         super(MachineDriverAgent, self).__init__()
         # n_state_features[1] is the network input size
@@ -40,6 +40,7 @@ class MachineDriverAgent(Agent):
         self.control_cost = c_M
         self.trainable = True
         self.M_t = np.zeros(batch_size)
+        self.setting = setting
         # n_state_features[0] is the number of state features
         self.n_state_features = n_state_features[0]
 
@@ -103,7 +104,7 @@ class MachineDriverAgent(Agent):
             The action policy distribution given form the network
         """
         # TODO: make machine worse than human+machine e.g. same feature value for road-grass
-        if setting == 2:
+        if self.setting == 2:
             curr_state = [cur_st.replace('grass', 'road') for cur_st in curr_state]
         state_feature_vector  = Environment.state2features(curr_state, self.n_state_features)
         actions_logits = self.network(state_feature_vector)
@@ -116,7 +117,7 @@ def dd_init():
     return [0]*3
 
 class NoisyDriverAgent(Agent):
-    def __init__(self, env: Environment, prob_wrong: float, noise_sw=.0, c_H=0.):
+    def __init__(self, env: Environment, prob_wrong: float, setting=1,  noise_sw=.0, c_H=0.):
         """
         A noisy driver, which chooses the cell with the lowest noisy estimated cost.
 
@@ -137,6 +138,7 @@ class NoisyDriverAgent(Agent):
         self.type_costs = env.type_costs
         self.control_cost = c_H
         self.trainable = False
+        self.setting = setting
         
         self.policy_approximation = defaultdict(dd_init)
 
@@ -161,12 +163,12 @@ class NoisyDriverAgent(Agent):
         ''' 
         
         switch_noise = self.noise_sw if switch else 0.  
-        if setting == 2:
-            estimation_noises = [4. if nxt_cell_type=='car' else self.noise_sd for nxt_cell_type in curr_state[1:4]]
-        else:
-            estimation_noises = [self.noise_sd for _ in curr_state[1:4]]
+        
+        if random.random() < self.prob_wrong:
+            action = random.choices(range(3), [1/3, 1/3, 1/3])[0]
+            return action
 
-        if setting==2:
+        if self.setting==2:
             for cell_type, i in enumerate(curr_state[1:4]):
                 if cell_type == 'car' and random.random() < 0.5:
                     curr_state[i+1] = 'road'
@@ -174,6 +176,7 @@ class NoisyDriverAgent(Agent):
         noisy_next_cell_costs = [self.type_costs[nxt_cell_type] if nxt_cell_type!='wall' else np.inf for nxt_cell_type in curr_state[1:4]]
         # if end of episode is reached
         if not noisy_next_cell_costs:
+            print('Not reached')
             return random.randint(0,2)
 
         min_estimated_cost = np.min(noisy_next_cell_costs) 
@@ -181,8 +184,6 @@ class NoisyDriverAgent(Agent):
         possible_actions = np.argwhere(noisy_next_cell_costs == min_estimated_cost).flatten()
         n_possible_actions = possible_actions.size
         action = random.choices(possible_actions, [1/n_possible_actions]*n_possible_actions)[0]
-        if random.random() < self.prob_wrong:
-            action = random.choices(range(3), [1/3, 1/3, 1/3])[0]
 
         
         return action

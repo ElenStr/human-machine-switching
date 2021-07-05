@@ -47,7 +47,7 @@ if 'off' in method:
     except:
         if not os.path.exists(traj_path):
             os.mkdir(traj_path)
-        human  = NoisyDriverAgent(env_generator, prob_wrong=estimation_noise, noise_sw=switching_noise, c_H=c_H)
+        human  = NoisyDriverAgent(env_generator, prob_wrong=estimation_noise, setting=setting, noise_sw=switching_noise, c_H=c_H)
         trajectories = []
         n_grids_per_scenario = n_traj // len(scenarios)
         for scen_fn in scenarios:
@@ -64,7 +64,7 @@ if 'on' in method :
     ds_on_path = f'{ROOT_DIR}/outputs/on_line_set_{n_episodes}_{init_traffic_level}{scen_postfix}'
     dir_post_fix += f'_on_D{n_episodes/1000}K'
     if human is None:
-        human = NoisyDriverAgent(env_generator, prob_wrong=estimation_noise, noise_sw=switching_noise, c_H=c_H)
+        human = NoisyDriverAgent(env_generator, prob_wrong=estimation_noise, setting=setting, noise_sw=switching_noise, c_H=c_H)
 
     try:
         with open(ds_on_path, 'rb') as file:
@@ -96,7 +96,7 @@ n_state_features_strings = env_generator.n_state_strings(depth, width)
 n_state_features_1hot =  env_generator.n_state_one_hot(depth, width)
 n_state_features = (n_state_features_strings, n_state_features_1hot)
 optimizer_fn = lambda params: RMSprop(params, lr)
-machine = MachineDriverAgent(n_state_features, n_actions, optimizer_fn, c_M=c_M, entropy_weight=entropy_weight, batch_size=batch_size)
+machine = MachineDriverAgent(n_state_features, n_actions, optimizer_fn, c_M=c_M, entropy_weight=entropy_weight, setting=setting, batch_size=batch_size)
 
 if 'auto' in agent:
     switch_agent = FixedSwitchingMachine(n_state_features, optimizer_fn, c_M=c_M, batch_size=batch_size)
