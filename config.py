@@ -23,13 +23,14 @@ def env_generator_fn(n_grids):
         grids.extend(grids_sc)
     return grids
 # Setting and agent config
-setting = 2
+setting = 1
 agent = f'switch{setting}{scen_postfix}'
 method = 'off_on'
+actual_human = True
 entropy_weight = 0.01
 
 # Dataset sizes for off and online training
-n_traj = 150000
+n_traj = 100000
 n_try = 1
 n_episodes = 100000
 

@@ -37,8 +37,8 @@ if not os.path.exists(res_dir):
 
 if 'off' in method:
     traj_path = f'{ROOT_DIR}/outputs/trajectories'
-    human_path = f'/human{setting}_{estimation_noise}_{switching_noise}_{init_traffic_level}_trajectories_{n_traj}_{n_try}'
-    dir_post_fix = f'_off_D{n_traj / 1000}K{n_try}R'
+    human_path = f'/humaN{setting}_{estimation_noise}_{switching_noise}_{init_traffic_level}_trajectories_{n_traj}_{n_try}'
+    dir_post_fix = f'_off{"T" if actual_human else "F"}_D{n_traj / 1000}K{n_try}R'
     try:
         with open(traj_path+human_path+traj_post_fx+scen_postfix, 'rb') as file:
             trajectories = pickle.load(file)
@@ -136,6 +136,7 @@ if 'pre' in agent:
         machine_algo, costs = train(machine_algo, trajectories[:50000],[], eval_set, eval_freq,  save_freq, batch_size=batch_size, eval_tries=1)
         machine = machine_algo[machine_agent_name][1][1]
 
+human.actual = actual_human
 algo = {dir_name: (switch_agent, [human, machine])}
 orig_stdout = sys.stdout
 with open(f'{ROOT_DIR}/{dir_name}.out','w', buffering=1) as f:

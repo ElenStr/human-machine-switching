@@ -118,7 +118,7 @@ def dd_init():
     return [0]*3
 
 class NoisyDriverAgent(Agent):
-    def __init__(self, env: Environment, prob_wrong: float, setting=1,  noise_sw=.0, c_H=0.):
+    def __init__(self, env: Environment, prob_wrong: float, setting=1,  noise_sw=.0, c_H=0., p_ignore_car=0.5):
         """
         A noisy driver, which chooses the cell with the lowest noisy estimated cost.
 
@@ -133,13 +133,14 @@ class NoisyDriverAgent(Agent):
             Standard deviation of the Gaussian noise beacuse of switching from Machine to Human
         """
         super(NoisyDriverAgent, self).__init__()
-        self.noise_sd = prob_wrong
+        self.p_ignore_car = p_ignore_car
         self.prob_wrong = prob_wrong
         self.noise_sw = noise_sw
-        self.type_costs = env.type_costs
+        self.type_costs = { **env.type_costs, 'wall':np.inf}
         self.control_cost = c_H
         self.trainable = False
         self.setting = setting
+        self.actual = True
         
         self.policy_approximation = defaultdict(dd_init)
 
@@ -155,6 +156,45 @@ class NoisyDriverAgent(Agent):
         total_state_visit = sum(self.policy_approximation[grid_id,human_obs])
         p_human_a_s = self.policy_approximation[grid_id,human_obs][action] / total_state_visit
         return p_human_a_s
+    
+    def get_actual_policy(self, state, next_state):
+        
+        greedy_cell = min(state[1:4], key=lambda x: self.type_costs[x])
+        next_cell = next_state[0]
+        is_greedy =   next_cell == greedy_cell        
+        n_cell = 2 if 'wall' in state[1:4] else 3
+        n_opt =  sum(1 for cell in state[1:4] if cell == greedy_cell) 
+        if self.setting == 1:
+            if is_greedy:
+                return (1 - self.prob_wrong)/n_opt + self.prob_wrong/n_cell
+            else:
+                return self.prob_wrong/n_cell
+        elif self.setting == 2:
+            n_road = sum(1 for cell in state[1:4] if cell == 'road')
+            n_car = sum(1 for cell in state[1:4] if cell == 'car')
+            if is_greedy:
+                if next_cell == 'road':
+                    mu_a_s =  (1 - self.p_ignore_car)*(1 - self.prob_wrong)/n_road + self.p_ignore_car*(1 - self.prob_wrong)/(n_car + n_road) + self.prob_wrong/n_cell
+                    return mu_a_s
+                elif next_cell == 'car':
+                    return 1/n_car
+                else:
+                    if 'car' in state[1:4]:
+                        return (1 - self.p_ignore_car)*(1 - self.prob_wrong)/n_opt  + self.prob_wrong/n_cell
+                    else:
+                        return (1 - self.prob_wrong)/n_opt  + self.prob_wrong/n_cell
+            else:
+                if next_cell =='car':
+                    return self.p_ignore_car * (1 - self.prob_wrong)/(n_road +n_car) + self.prob_wrong/n_cell
+                else:
+                    return self.prob_wrong/n_cell                
+
+    def get_policy(self, state, action, grid_id, next_state):
+        if self.actual:
+            return self.get_actual_policy(state, next_state)
+        else:
+            return self.get_policy_approximation(state, action, grid_id)
+
 
 
     def take_action(self, curr_state, switch=False):
@@ -169,7 +209,7 @@ class NoisyDriverAgent(Agent):
         curr_state_for_human = copy(curr_state)
         if self.setting==2:
             for i, cell_type in enumerate(curr_state[1:4]):                
-                if cell_type == 'car' and p_ignore < 0.5:                    
+                if cell_type == 'car' and p_ignore < self.p_ignore_car:                    
                     curr_state_for_human[i+1] = 'road'
         # noisy_next_cell_costs = [self.type_costs[nxt_cell_type] + random.gauss(0,estimation_noise) + random.gauss(0, switch_noise) if nxt_cell_type!='wall' else np.inf for nxt_cell_type, estimation_noise in zip(curr_state[1:4], estimation_noises)]
         noisy_next_cell_costs = [self.type_costs[nxt_cell_type] if nxt_cell_type!='wall' else np.inf for nxt_cell_type in curr_state_for_human[1:4]]

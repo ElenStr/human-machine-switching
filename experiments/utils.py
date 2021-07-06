@@ -231,7 +231,7 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory_batch, n_
                     
                     td_error = c_tplus1 + v_tplus1 - v_t
 
-                    mu_t = acting_agents[0].get_policy_approximation(current_state, action, grid_id)
+                    mu_t = acting_agents[0].get_policy(current_state, action, grid_id, next_state)
                     
                     policy = acting_agents[1].take_action(current_state)[1]
                     with torch.no_grad():
