@@ -75,9 +75,7 @@ class MachineDriverAgent(Agent):
         else:
             self.entropy_weight = 0
         # weighting and delta must have been computed with torch.no_grad()
-        
         policy_loss = weighting * delta * log_pi  + self.entropy_weight*entropy
-        
         policy_loss = policy_loss.mean()
         
         self.optimizer.zero_grad()
@@ -109,9 +107,33 @@ class MachineDriverAgent(Agent):
             curr_state = [cur_st.replace('grass', 'road') for cur_st in curr_state]
         state_feature_vector  = Environment.state2features(curr_state, self.n_state_features)
         actions_logits = self.network(state_feature_vector)
+
+        valid_action_logits = actions_logits
+        # print("logits", actions_logits)
+
+        # # Never choose wall
+        # if len(curr_state) > 1:
+        #     if curr_state[1] == 'wall':
+        #         valid_action_logits = actions_logits[1:] 
+        #     elif curr_state[3] == 'wall':
+        #         valid_action_logits = actions_logits[:2] 
         policy = torch.distributions.Categorical(logits=actions_logits)
-        action = policy.sample().item()
-        return action, policy  
+        valid_action_probs = policy.probs
+        # # print("a", valid_action_probs)
+        if len(curr_state) > 1:
+            if curr_state[1] == 'wall':
+                valid_action_probs = torch.stack([torch.as_tensor([0]),torch.unsqueeze(policy.probs[1]/torch.sum(policy.probs[1:]), dim=0), torch.unsqueeze(policy.probs[2]/torch.sum(policy.probs[1:]), dim=0)]) 
+            elif curr_state[3] == 'wall':
+                valid_action_probs = torch.stack([torch.unsqueeze(policy.probs[0]/torch.sum(policy.probs[:2]), dim=0), torch.unsqueeze(policy.probs[1]/torch.sum(policy.probs[:2]), dim=0), torch.as_tensor([0]) ])
+        valid_policy = torch.distributions.Categorical(probs=torch.squeeze(valid_action_probs))
+        action = valid_policy.sample().item()
+        if len(curr_state) > 1:
+            if curr_state[1] == 'wall':
+                assert action != 0
+            elif curr_state[3] == 'wall':
+                assert action != 2
+
+        return action , valid_policy  
 
 # needed to pickle human
 def dd_init():
