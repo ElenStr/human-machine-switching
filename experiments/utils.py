@@ -281,7 +281,8 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory_batch, n_
 
                 if torch.is_tensor(list(switching_agent.network.parameters())[0].grad):
                     if not torch.any(list(switching_agent.network.parameters())[0].grad > 0.):
-                        print('critic zero grad ')
+                        # print('critic zero grad ')
+                        pass
                     if not torch.all(list(switching_agent.network.parameters())[-1].grad < 1e3):
                         print('critic grad > 1e3')
             if acting_agents[1].trainable and len(actor_emphatic_weightings):
@@ -308,7 +309,8 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory_batch, n_
                 
                 if torch.is_tensor(list(acting_agents[1].network.parameters())[0].grad):
                     if not torch.any(list(acting_agents[1].network.parameters())[0].grad > 0.):
-                        print('actor zero grad')
+                        # print('actor zero grad')
+                        pass
                     if not torch.all(list(acting_agents[1].network.parameters())[-1].grad < 1e3):
                         print('actor grad > 1e3')
     return np.mean(machine_picked)

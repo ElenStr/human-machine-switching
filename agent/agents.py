@@ -108,7 +108,7 @@ class MachineDriverAgent(Agent):
         state_feature_vector  = Environment.state2features(curr_state, self.n_state_features)
         actions_logits = self.network(state_feature_vector)
 
-        valid_action_logits = actions_logits
+        valid_action_logits = torch.clamp(actions_logits, min=torch.finfo(actions_logits.dtype).min, max=torch.finfo(actions_logits.dtype).max)
         # print("logits", actions_logits)
 
         # # Never choose wall
@@ -117,7 +117,8 @@ class MachineDriverAgent(Agent):
         #         valid_action_logits = actions_logits[1:] 
         #     elif curr_state[3] == 'wall':
         #         valid_action_logits = actions_logits[:2] 
-        policy = torch.distributions.Categorical(logits=actions_logits)
+
+        policy = torch.distributions.Categorical(logits=valid_action_logits)
         valid_action_probs = policy.probs
         # # print("a", valid_action_probs)
         if len(curr_state) > 1:

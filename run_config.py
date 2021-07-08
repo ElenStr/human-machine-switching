@@ -37,7 +37,7 @@ if not os.path.exists(res_dir):
 
 if 'off' in method:
     traj_path = f'{ROOT_DIR}/outputs/trajectories'
-    human_path = f'/humaN{setting}_{estimation_noise}_{switching_noise}_{init_traffic_level}_trajectories_{n_traj}_{n_try}'
+    human_path = f'/human{setting}_{estimation_noise}_{switching_noise}_{init_traffic_level}_trajectories_{n_traj}_{n_try}'
     dir_post_fix = f'_off{"T" if actual_human else "F"}_D{n_traj / 1000}K{n_try}R'
     try:
         with open(traj_path+human_path+traj_post_fx+scen_postfix, 'rb') as file:
