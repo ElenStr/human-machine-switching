@@ -63,4 +63,19 @@ def difficult_grid(cells, start, finish, obstacle_type, start_obst_mid=False):
         cells[1, row+1] = 'road'
         cells[2, row+1] = obstacle_type
 
-        
+
+def clean_grass(cells, start,finish, env):
+    
+    for row in range(start,finish):
+        for col in range(env.width):
+            env_cell_types = ['road', 'grass', 'stone']
+            cell_probs = [0.5, 0.4, 0.1]
+            cells[col, row] = random.choices(env_cell_types, cell_probs)[0]
+                    
+def clean_car(cells, start,finish, env):
+    
+    for row in range(start,finish):
+        for col in range(env.width):
+            env_cell_types = ['road', 'car', 'stone']
+            cell_probs = [0.5, 0.4, 0.1]
+            cells[col, row] = random.choices(env_cell_types, cell_probs)[0]
