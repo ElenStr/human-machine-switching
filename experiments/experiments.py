@@ -21,11 +21,11 @@ def save_agent_cost(name, actor, critic, costs, ratios, on_off):
         with open(f'{ROOT_DIR}/results/{name}/ratios_'+on_off, 'wb') as file:
             pickle.dump(ratios, file, pickle.HIGHEST_PROTOCOL)
 
-def evaluate(switching_agent, acting_agents, eval_set, n_try=10, plt_path=None):
+def evaluate(switching_agent, acting_agents, eval_set, n_try=10, online_ev=False, plt_path=None):
     eval_costs = []
     machine_picked_ratios = []
     for grid in eval_set:
-        cost, machine_picked = learn_evaluate(switching_agent, acting_agents, [grid], is_learn=False, ret_trajectory=False, n_try=n_try)
+        cost, machine_picked = learn_evaluate(switching_agent, acting_agents, [grid], is_learn=False, online_ev=online_ev, ret_trajectory=False, n_try=n_try)
         if plt_path is not None:
             grid.plot_trajectory(switching_agent, acting_agents, plt_path)
         eval_costs.append(cost)
@@ -124,7 +124,7 @@ def train(algos, trajectories, on_line_set,
                 machine_picked_ratios_tr[algo].append(machine_picked_tr)
                 # print log
                 if verbose and ep % eval_freq == 0 and (ep // eval_freq > 0):
-                    eval_cost, machine_picked = evaluate(switching_agent, acting_agents, eval_set,n_try=eval_tries)
+                    eval_cost, machine_picked = evaluate(switching_agent, acting_agents, eval_set,online_ev=True, n_try=eval_tries)
                     print(f'{datetime.datetime.now()}, On-policy, Episode {ep}, {algo}  evaluation cost: {eval_cost}')
                     algos_costs[algo].append(eval_cost)
                     if 'switch' in algo or 'fxd' in algo:

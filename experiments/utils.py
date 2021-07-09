@@ -11,7 +11,7 @@ from plot.plot_path import HUMAN_COLOR, MACHINE_COLOR, PlotPath
  
 
 
-def learn_evaluate(switching_agent: Agent, acting_agents, envs ,is_learn: bool, grid_id=0,ret_trajectory=False,  n_try=1, batch_size=1):
+def learn_evaluate(switching_agent: Agent, acting_agents, envs ,is_learn: bool, online_ev=False, grid_id=0,ret_trajectory=False,  n_try=1, batch_size=1):
     """
     Learn (on policy) or evaluate overall policy in a grid environment.
 
@@ -34,6 +34,8 @@ def learn_evaluate(switching_agent: Agent, acting_agents, envs ,is_learn: bool, 
     ret_trajectory: bool
         To gather and return or not the trajectory
     
+    online_ev: bool
+        True in online evaluation
     grid_id: int
         Used only if ret_trajectory==True, the unique grid id for which 
         human policy distribution approximation is computed
@@ -71,7 +73,7 @@ def learn_evaluate(switching_agent: Agent, acting_agents, envs ,is_learn: bool, 
                 current_state = env.current_state()
                 
 
-                d_t = switching_agent.take_action(current_state, is_learn, online=True)
+                d_t = switching_agent.take_action(current_state, is_learn, online=online_ev)
                 option = acting_agents[d_t] 
                 total_machine_picked.append(d_t)
                 if not d_t:  
