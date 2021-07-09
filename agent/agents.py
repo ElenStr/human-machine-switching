@@ -103,9 +103,11 @@ class MachineDriverAgent(Agent):
             The action policy distribution given form the network
         """
         # TODO: make machine worse than human+machine e.g. same feature value for road-grass
+        set_curr_state = curr_state
         if self.setting == 2:
-            curr_state = [cur_st.replace('grass', 'road') for cur_st in curr_state]
-        state_feature_vector  = Environment.state2features(curr_state, self.n_state_features)
+            set_curr_state = list(map(lambda x : 'road' if x=='grass' else x, curr_state ))
+
+        state_feature_vector  = Environment.state2features(set_curr_state, self.n_state_features)
         actions_logits = self.network(state_feature_vector)
 
         valid_action_logits = torch.clamp(actions_logits, min=torch.finfo(actions_logits.dtype).min, max=torch.finfo(actions_logits.dtype).max)

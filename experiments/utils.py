@@ -5,7 +5,7 @@ import numpy as np
 
 
 from agent.agents import Agent
-from agent.switching_agents import FixedSwitchingHuman
+from agent.switching_agents import FixedSwitchingHuman, FixedSwitchingMachine
 from environments.env import Environment
 from plot.plot_path import HUMAN_COLOR, MACHINE_COLOR, PlotPath
  
@@ -94,14 +94,19 @@ def learn_evaluate(switching_agent: Agent, acting_agents, envs ,is_learn: bool, 
                     trajectory.append((current_state, action, next_state, cost, grid_id))
                 if is_learn:
                     if switching_agent.trainable:
-                        next_features = Environment.state2features(next_state, switching_agent.n_state_features) 
+                        set_cur_state, set_nxt_state = current_state, next_state
+                        if acting_agents[1].setting == 2 and isinstance(switching_agent, FixedSwitchingMachine):
+                            set_cur_state = list(map(lambda x : 'road' if x=='grass' else x, current_state ))
+                            set_nxt_state = list(map(lambda x : 'road' if x=='grass' else x, next_state ))
+                        
+                        next_features = Environment.state2features(set_nxt_state, switching_agent.n_state_features) 
                         with torch.no_grad():
-                            d_tplus1 = switching_agent.take_action(next_state,is_learn)
+                            d_tplus1 = switching_agent.take_action(set_nxt_state,is_learn)
                             if switching_agent.network.needs_agent_feature :
                                 next_features.extend(Environment.agent_feature2net_input(d_tplus1))
                             v_tplus1 = switching_agent.target_network(next_features)
 
-                        features = Environment.state2features(current_state, switching_agent.n_state_features)
+                        features = Environment.state2features(set_cur_state, switching_agent.n_state_features)
                         if switching_agent.network.needs_agent_feature :
                             features.extend(Environment.agent_feature2net_input(d_t))
                         v_t = switching_agent.network(features)
@@ -219,14 +224,18 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory_batch, n_
                 c_tplus1 = cost + option.control_cost
                 
                 if switching_agent.trainable:
-                    next_features = Environment.state2features(next_state, switching_agent.n_state_features) 
+                    set_cur_state, set_nxt_state = current_state, next_state
+                    if acting_agents[1].setting == 2 and isinstance(switching_agent, FixedSwitchingMachine):
+                        set_cur_state = list(map(lambda x : 'road' if x=='grass' else x, current_state ))
+                        set_nxt_state = list(map(lambda x : 'road' if x=='grass' else x, next_state ))
+                    next_features = Environment.state2features(set_nxt_state, switching_agent.n_state_features) 
                     with torch.no_grad():
-                        d_tplus1 = switching_agent.take_action(next_state, True)
+                        d_tplus1 = switching_agent.take_action(set_nxt_state, True)
                         if switching_agent.network.needs_agent_feature :                        
                             next_features.extend(Environment.agent_feature2net_input(d_tplus1))
                         v_tplus1 = switching_agent.target_network(next_features)
 
-                    features = Environment.state2features(current_state, switching_agent.n_state_features)
+                    features = Environment.state2features(set_cur_state, switching_agent.n_state_features)
                     if switching_agent.network.needs_agent_feature :
                         features.extend(Environment.agent_feature2net_input(d_t))
                     v_t = switching_agent.network(features)
