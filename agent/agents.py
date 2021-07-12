@@ -109,8 +109,8 @@ class MachineDriverAgent(Agent):
 
         state_feature_vector  = Environment.state2features(set_curr_state, self.n_state_features)
         actions_logits = self.network(state_feature_vector)
-
-        valid_action_logits = torch.clamp(actions_logits, min=torch.finfo(actions_logits.dtype).min, max=torch.finfo(actions_logits.dtype).max)
+        actions_logits[actions_logits!=actions_logits] = 0
+        valid_action_logits = actions_logits
         # print("logits", actions_logits)
 
         # # Never choose wall

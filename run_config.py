@@ -47,14 +47,14 @@ if 'off' in method:
     except:
         if not os.path.exists(traj_path):
             os.mkdir(traj_path)
-        human  = NoisyDriverAgent(env_generator, prob_wrong=estimation_noise, setting=setting, noise_sw=switching_noise, c_H=c_H)
+        human  = NoisyDriverAgent(env_generator, prob_wrong=estimation_noise, p_ignore_car= p_ignore ,setting=setting, noise_sw=switching_noise, c_H=c_H)
         trajectories = []
         n_grids_per_scenario = n_traj // len(scenarios)
         for scen_fn in scenarios:
-            all_env_params = {'scenario_fn': scen_fn, **env_params}
+            all_env_params = {'scenario_fn': scen_fn,'base_fn': scen_fn, **env_params}
             traj_sc = gather_human_trajectories(human, env_generator,n_grids_per_scenario,n_try ,**all_env_params) 
             trajectories.extend(traj_sc)
-        
+        random.shuffle(trajectories)
         with open(traj_path+human_path+traj_post_fx+scen_postfix, 'wb') as file:
             pickle.dump(trajectories, file, pickle.HIGHEST_PROTOCOL)
         with open(traj_path+human_path+'_agent'+traj_post_fx+scen_postfix, 'wb') as file:
