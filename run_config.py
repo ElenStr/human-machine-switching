@@ -139,8 +139,12 @@ if 'pre' in agent:
 human.actual = actual_human
 algo = {dir_name: (switch_agent, [human, machine])}
 orig_stdout = sys.stdout
-with open(f'{ROOT_DIR}/{dir_name}.out','w', buffering=1) as f:
-    sys.stdout = f
-    algo, costs = train(algo, trajectories, on_line_set, eval_set, eval_freq, save_freq, batch_size=batch_size, eval_tries=eval_tries)
-    sys.stdout = orig_stdout
+orig_err = sys.stderr
+with open(f'{ROOT_DIR}/{dir_name}_err.out','w', buffering=1) as ferr:
+    with open(f'{ROOT_DIR}/{dir_name}.out','w', buffering=1) as f:
+        sys.stdout = f
+        sys.stderr = ferr
+        algo, costs = train(algo, trajectories, on_line_set, eval_set, eval_freq, save_freq, batch_size=batch_size, eval_tries=eval_tries)
+        sys.stdout = orig_stdout
+    sys.stderr = orig_err
 

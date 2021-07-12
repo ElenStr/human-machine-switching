@@ -2,7 +2,7 @@ from collections import defaultdict
 import random
 import torch 
 import numpy as np
-
+import sys
 
 from agent.agents import Agent
 from agent.switching_agents import FixedSwitchingHuman, FixedSwitchingMachine
@@ -103,12 +103,12 @@ def learn_evaluate(switching_agent: Agent, acting_agents, envs ,is_learn: bool, 
                         with torch.no_grad():
                             d_tplus1 = switching_agent.take_action(set_nxt_state,is_learn)
                             if switching_agent.network.needs_agent_feature :
-                                next_features.extend(Environment.agent_feature2net_input(d_tplus1))
+                                next_features = [*next_features, *Environment.agent_feature2net_input(d_tplus1)]
                             v_tplus1 = switching_agent.target_network(next_features)
 
                         features = Environment.state2features(set_cur_state, switching_agent.n_state_features)
                         if switching_agent.network.needs_agent_feature :
-                            features.extend(Environment.agent_feature2net_input(d_t))
+                            features = [*features, *Environment.agent_feature2net_input(d_t)]
                         v_t = switching_agent.network(features)
                         
                         td_error = c_tplus1 + v_tplus1 - v_t
@@ -133,9 +133,9 @@ def learn_evaluate(switching_agent: Agent, acting_agents, envs ,is_learn: bool, 
                 switching_agent.update_policy(1, td_errors)
                 if torch.is_tensor(list(switching_agent.network.parameters())[0].grad):
                     if not torch.any(list(switching_agent.network.parameters())[0].grad > 0.):
-                        print('critic zero grad ')
+                        print('critic zero grad ', file=sys.stderr)
                     if not torch.all(list(switching_agent.network.parameters())[-1].grad < 1e3):
-                        print('critic grad > 1e3')
+                        print('critic grad > 1e3', file=sys.stderr)
 
             
             if is_learn and acting_agents[1].trainable and len(costs_for_delta):
@@ -156,9 +156,9 @@ def learn_evaluate(switching_agent: Agent, acting_agents, envs ,is_learn: bool, 
                 
                 if torch.is_tensor(list(acting_agents[1].network.parameters())[0].grad):
                     if not torch.any(list(acting_agents[1].network.parameters())[0].grad > 0.):
-                        print('actor zero grad ')
+                        print('actor zero grad ', file=sys.stderr)
                     if not torch.all(list(acting_agents[1].network.parameters())[-1].grad < 1e3):
-                        print('actor grad > 1e3')
+                        print('actor grad > 1e3', file=sys.stderr)
 
 
 
@@ -232,12 +232,12 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory_batch, n_
                     with torch.no_grad():
                         d_tplus1 = switching_agent.take_action(set_nxt_state, True)
                         if switching_agent.network.needs_agent_feature :                        
-                            next_features.extend(Environment.agent_feature2net_input(d_tplus1))
+                            next_features = [*next_features, *Environment.agent_feature2net_input(d_tplus1)]
                         v_tplus1 = switching_agent.target_network(next_features)
 
                     features = Environment.state2features(set_cur_state, switching_agent.n_state_features)
                     if switching_agent.network.needs_agent_feature :
-                        features.extend(Environment.agent_feature2net_input(d_t))
+                        features = [*features, *Environment.agent_feature2net_input(d_t)]
                     v_t = switching_agent.network(features)
                     
                     td_error = c_tplus1 + v_tplus1 - v_t
@@ -292,10 +292,10 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory_batch, n_
 
                 if torch.is_tensor(list(switching_agent.network.parameters())[0].grad):
                     if not torch.any(list(switching_agent.network.parameters())[0].grad > 0.):
-                        # print('critic zero grad ')
+                        print('critic zero grad ', file=sys.stderr)
                         pass
                     if not torch.all(list(switching_agent.network.parameters())[-1].grad < 1e3):
-                        print('critic grad > 1e3')
+                        print('critic grad > 1e3', file=sys.stderr)
             if acting_agents[1].trainable and len(actor_emphatic_weightings):
                 
                 with torch.no_grad():
@@ -320,10 +320,10 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory_batch, n_
                 
                 if torch.is_tensor(list(acting_agents[1].network.parameters())[0].grad):
                     if not torch.any(list(acting_agents[1].network.parameters())[0].grad > 0.):
-                        # print('actor zero grad')
+                        print('actor zero grad', file=sys.stderr)
                         pass
                     if not torch.all(list(acting_agents[1].network.parameters())[-1].grad < 1e3):
-                        print('actor grad > 1e3')
+                        print('actor grad > 1e3', file=sys.stderr)
     return np.mean(machine_picked)
 
             

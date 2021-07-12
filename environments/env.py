@@ -358,7 +358,7 @@ class Environment:
         f_v: list
             The onehot represantation of value
         """
-        f_v = [0.]*n_onehot
+        f_v = [0. for i in range(n_onehot)]
         f_v[n_onehot - value - 1] = 1.
         return f_v
     @staticmethod
@@ -388,34 +388,26 @@ class Environment:
 
         cell_t = np.array(CELL_TYPES+['wall'])
         # traffic_l = np.array(TRAFFIC_LEVELS)
-        features = []
+        features = [0 for _ in range(cell_t.size - 1 + (n_features-1) * cell_t.size )]
         feature = np.argwhere(cell_t == state[0])[0][0]
         # TODO: onehot encoding for features
         if real_v:
             features.append((feature + 1)*0.2)
         else:
-            features.extend(Environment.feature2net_input(feature, cell_t.size - 1))
+            f0 = Environment.feature2net_input(feature, cell_t.size - 1)
+            for i in range(0,cell_t.size-1):
+                features[i] = f0[i]
 
         for i in range(1,n_features):
-            # if (i-1) % (Environment.width+1) == 0:
-            #     state_i =  state[i] if i <= len(state)-1 else 'not-available'
-            #     # feature = np.argwhere(traffic_l == state_i)
-            #     # add value for no traffic for last states
-            #     # feature = traffic_l.size if not feature.size else feature[0][0]
-            #     # 1 stands for not available
-            #     if real_v: 
-            #         features.append(feature + 2.)
-            #     else:
-            #         features.extend(Environment.feature2net_input(feature, traffic_l.size + 1))              
-
-
-            # else:
+           
             state_i =  state[i] if i <= len(state)-1 else 'wall'
             feature = np.argwhere(cell_t == state_i)[0][0]
             if real_v:
                 features.append((feature + 1.) * 0.2)
             else:
-                features.extend(Environment.feature2net_input(feature, cell_t.size)) 
+                fi = Environment.feature2net_input(feature, cell_t.size)
+                for j in range(0,cell_t.size):
+                    features[cell_t.size-1 + (i-1)*cell_t.size + j] = fi[j]
 
 
         return features
