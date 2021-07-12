@@ -34,11 +34,11 @@ entropy_weight = 0.01
 
 # Dataset sizes for off and online training
 n_traj = 100000
-n_try = 1
+n_try = 1 # number of rollouts
 n_episodes = 100000
 
 # Human 
-estimation_noise = 0.2
+estimation_noise = 0.0 #probablity picking at random
 switching_noise = 0.0
 p_ignore = 1.0
 c_H = 0.0
