@@ -79,3 +79,40 @@ def clean_car(cells, start,finish, env):
             env_cell_types = ['road', 'car', 'stone']
             cell_probs = [0.5, 0.4, 0.1]
             cells[col, row] = random.choices(env_cell_types, cell_probs)[0]
+
+def greedy_grid(cells, start,finish, env, obstacle='grass'):
+    
+    for row in range(start,finish):
+        obst_col=random.choices(range(env.width), [1/3.]*3)[0]
+        cells[obst_col, row] = obstacle
+        # 1 obstacle with prob 0.7, 2 obstacles with prob 0.2, 3 with prob 0.1
+        extra_obst = random.choices(range(3), [0.7, 0.2, 0.1])[0]
+        # 2 obstacles case, make sure the optimal path == same as greedy
+        if extra_obst==1:
+            if start >0:
+                obst_mask = [1 if cells[c, row-1]==obstacle else 0 for c in range(3)]
+                if obst_mask == [0,1,0]:
+                    cells[0, row] = obstacle
+                    cells[1, row] = 'road'
+                    cells[2, row] = obstacle
+                    continue
+                elif sum(obst_mask) == 1:
+                    if obst_col==1:
+                        second_obst_col = np.argwhere(np.array(obst_mask) == 1).flatten()[0]
+                        cells[second_obst_col, row] = obstacle
+                        cells[2 - second_obst_col, row] = 'road'
+                        continue
+              
+            # choose remaining cell types
+            second_obst_col = random.choices([int(obst_col==0), int(obst_col<=1) + 1], [0.5]*2)[0]
+            cells[second_obst_col, row] = obstacle
+            cells[3 - obst_col - second_obst_col, row] = 'road'
+
+        else:
+            for col in range(env.width):
+                if col!=obst_col:
+                    cells[col, row] = 'road' if not extra_obst else obstacle
+
+            
+
+                    

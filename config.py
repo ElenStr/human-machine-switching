@@ -13,9 +13,10 @@ env_params = { 'width' : width, 'height':height, 'init_traffic_level': init_traf
 
 other_snenarios = [lambda c,s,f: fn(c,s,f,obst) for fn in [two_lanes_obstcales, difficult_grid] for obst in ['car', 'grass']]
 # scenarios = [lambda c,s,f: general_grid(c,s,f,env_generator) ] #+other_snenarios  
-scenarios = [lambda c,s,f: clean_grass(c,s,f,env_generator), lambda c,s,f: clean_car(c,s,f,env_generator)  ] #+other_snenarios  
+# scenarios = [lambda c,s,f: clean_grass(c,s,f,env_generator), lambda c,s,f: clean_car(c,s,f,env_generator)  ] #+other_snenarios  
+scenarios = [lambda c,s,f: greedy_grid(c,s,f,env_generator, 'grass'), lambda c,s,f: greedy_grid(c,s,f,env_generator, 'car')  ] #+other_snenarios  
 
-scen_postfix = '_sc' if len(scenarios) > 1 else ''
+scen_postfix = '_scX' if len(scenarios) > 1 else ''
 def env_generator_fn(n_grids):
     grids = []
     n_grids_per_scenario = n_grids // len(scenarios)
@@ -28,7 +29,7 @@ def env_generator_fn(n_grids):
 # Setting and agent config
 setting = 2
 agent = f'switch{setting}{scen_postfix}'
-method = 'off_on'
+method = 'on'
 actual_human = True
 entropy_weight = 0.01
 
