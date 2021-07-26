@@ -109,7 +109,7 @@ class MachineDriverAgent(Agent):
 
         state_feature_vector  = Environment.state2features(set_curr_state, self.n_state_features)
         actions_logits = self.network(state_feature_vector)
-        actions_logits[actions_logits!=actions_logits] = 0
+        # actions_logits[actions_logits!=actions_logits] = 0
         valid_action_logits = actions_logits
         # print("logits", actions_logits)
 
@@ -122,13 +122,22 @@ class MachineDriverAgent(Agent):
 
         policy = torch.distributions.Categorical(logits=valid_action_logits)
         valid_action_probs = policy.probs
-        # # print("a", valid_action_probs)
+        if (policy.probs < 1e-5).any():
+            valid_action_probs = valid_action_probs.clamp(1e-5,1-1e-5)
+            valid_action_probs = valid_action_probs/valid_action_probs.sum()
         if len(curr_state) > 1:
             if curr_state[1] == 'wall':
-                valid_action_probs = torch.stack([torch.as_tensor([0]),torch.unsqueeze(policy.probs[1]/torch.sum(policy.probs[1:]), dim=0), torch.unsqueeze(policy.probs[2]/torch.sum(policy.probs[1:]), dim=0)]) 
+                valid_action_probs = valid_action_probs[1:].clamp(1e-5,1-1e-5)
+                valid_action_probs = valid_action_probs/valid_action_probs.sum()
+                valid_action_probs = torch.squeeze(torch.stack([torch.tensor(0),valid_action_probs[0], valid_action_probs[1]]))
             elif curr_state[3] == 'wall':
-                valid_action_probs = torch.stack([torch.unsqueeze(policy.probs[0]/torch.sum(policy.probs[:2]), dim=0), torch.unsqueeze(policy.probs[1]/torch.sum(policy.probs[:2]), dim=0), torch.as_tensor([0]) ])
-        valid_policy = torch.distributions.Categorical(probs=torch.squeeze(valid_action_probs))
+                valid_action_probs = valid_action_probs[:2].clamp(1e-5,1-1e-5)
+                valid_action_probs = valid_action_probs/valid_action_probs.sum()
+                valid_action_probs = torch.squeeze(torch.stack([valid_action_probs[0], valid_action_probs[1], torch.tensor(0)]))
+            
+        # valid_action_probs = valid_action_probs.clamp(1e-5, 1.)
+        valid_policy = torch.distributions.Categorical(probs=valid_action_probs)
+        # print("a", valid_action_probs)
         action = valid_policy.sample().item()
         if len(curr_state) > 1:
             if curr_state[1] == 'wall':
@@ -228,6 +237,10 @@ class NoisyDriverAgent(Agent):
         human considers only next row, not the others
         ''' 
         
+        # if end of episode is reached
+        if len(curr_state) < 4:            
+            return random.randint(0,2)
+
         switch_noise = self.noise_sw if switch else 0.  
         p_choose = random.random()
         p_ignore = random.random()
@@ -236,11 +249,10 @@ class NoisyDriverAgent(Agent):
             for i, cell_type in enumerate(curr_state[1:4]):                
                 if cell_type == 'car' and p_ignore < self.p_ignore_car:                    
                     curr_state_for_human[i+1] = 'road'
-        # noisy_next_cell_costs = [self.type_costs[nxt_cell_type] + random.gauss(0,estimation_noise) + random.gauss(0, switch_noise) if nxt_cell_type!='wall' else np.inf for nxt_cell_type, estimation_noise in zip(curr_state[1:4], estimation_noises)]
-        noisy_next_cell_costs = [self.type_costs[nxt_cell_type] if nxt_cell_type!='wall' else np.inf for nxt_cell_type in curr_state_for_human[1:4]]
-        # if end of episode is reached
-        if not noisy_next_cell_costs:            
-            return random.randint(0,2)
+        # noisy_next_cell_costs = [self.type_costs[nxt_cell_type] + random.gauss(0,estimation_noise) + random.gauss(0, switch_noise) if nxt_cell_type!='wall' else np.inf for nxt_cell_type, estimation_noise in zip(curr_state[2:5], estimation_noises)]
+        noisy_next_cell_costs = [self.type_costs[nxt_cell_type] for nxt_cell_type in curr_state_for_human[1:4]]
+
+
         if p_choose < self.prob_wrong:
             if curr_state[1] == 'wall':
                 action = random.choices(range(2), [1/2, 1/2])[0] + 1
