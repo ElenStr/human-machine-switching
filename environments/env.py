@@ -285,7 +285,7 @@ class Environment:
 
         self.traffic_probs = TRAFFIC_LEVEL_PROBS
         self.type_probs = TYPE_PROBS
-        self.cell_types = CELL_TYPES
+        self.cell_types = list(CELL_TYPES.keys())
         self.traffic_levels = TRAFFIC_LEVELS
         self.type_costs = TYPE_COSTS
 
