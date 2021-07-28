@@ -13,7 +13,7 @@ def general_grid(cells, start,finish, env):
     for row in range(start,finish):
         for col in range(env.width):
             cell_probs = list(env.type_probs[env.traffics[row]].values())
-            cells[col, row] = random.choices(env.cell_types, cell_probs)[0]
+            cells[col, row] = random.choices(env.cell_types.values(), cell_probs)[0]
             if grass_obstacle and cells[col, row] == 'grass':
             # remove grass cells since a grass obstacle will be added later
             # grass cells will become with 0.5 road and 0.5 stone
