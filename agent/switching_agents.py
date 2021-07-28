@@ -22,7 +22,7 @@ class FixedSwitchingHuman(Agent):
         super(FixedSwitchingHuman, self).__init__()
         self.trainable = False
         
-    def take_action(self, state, train, online):
+    def take_action(self, state, train, online,use_target=False):
         return 0
 
 class FixedSwitchingMachine(Agent):
@@ -41,7 +41,7 @@ class FixedSwitchingMachine(Agent):
         self.n_state_features = n_state_features[0]
         self.F_t= np.zeros(batch_size)
         
-        self.var_rho = np.ones(batch_size)
+        self.var_rho = np.zeros(batch_size)
         self.trainable = True
 
 
@@ -77,7 +77,7 @@ class FixedSwitchingMachine(Agent):
         self.optimizer.step()
 
 
-    def take_action(self, curr_state, train, online=False):
+    def take_action(self, curr_state, train, online=False, use_target=False):
         return 1
 
 
@@ -93,7 +93,7 @@ class SwitchingAgent(Agent):
         self.optimizer = optimizer(self.network.parameters())        
         self.target_network = OptionCriticNet(n_state_features[1]+2, c_M,c_H)
         self.target_network.load_state_dict(self.network.state_dict())
-        self.target_update_freq = 200
+        self.target_update_freq = 5000
         self.timesteps = 0
         self.epsilon_fn = eps_fn
         self.epsilon = self.epsilon_fn(0)
@@ -101,7 +101,7 @@ class SwitchingAgent(Agent):
 
         self.F_t= np.zeros(batch_size)
         
-        self.var_rho = np.ones(batch_size)
+        self.var_rho = np.zeros(batch_size)
 
         self.trainable = True
         self.n_state_features = n_state_features[0]
@@ -146,7 +146,7 @@ class SwitchingAgent(Agent):
         self.optimizer.step()
 
 
-    def take_action(self, curr_state, train=True, online=False):
+    def take_action(self, curr_state, train=True, online=False, use_target=False):
         """
         Return the switching decision given the current state 
 
@@ -163,18 +163,32 @@ class SwitchingAgent(Agent):
         # start machine training in off policy
         # if train and any(self.F_t==0):
         #     return 1
+        network = self.network if not use_target else self.target_network
         state_feature_vector  = Environment.state2features(curr_state, self.n_state_features)
-         
-        human_option_value = self.network(state_feature_vector + [0.,1.]).detach().item()
-        machine_option_value = self.network(state_feature_vector + [1.,0.]).detach().item()
+        human_option_value = network(state_feature_vector + [0.,1.]).detach().item()
+        machine_option_value = network(state_feature_vector + [1.,0.]).detach().item()
         p = random.random()
         # epsilon greedy only when training
         epsilon = self.epsilon if train or online else 0.0
         if p < 1- epsilon:
-            switch = np.argmin([human_option_value, machine_option_value]).flatten()[0]
+            switch =  int(human_option_value >= machine_option_value)
         else:
             switch = random.choices([0, 1], [.5, .5])[0]
         # if human_option_value> machine_option_value : 
         #     print(human_option_value, machine_option_value, switch)
-        
         return switch 
+
+
+class SwitchHardFixed(Agent):
+    """
+    Switching policy chooses always human
+    """
+    def __init__(self):
+        super(SwitchHardFixed, self).__init__()
+        self.trainable = False
+        
+    def take_action(self, state, train, online, use_target=False):
+        if 'grass' in state:
+            return 0
+        else:
+            return 1
