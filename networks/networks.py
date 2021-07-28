@@ -93,12 +93,12 @@ class OptionCriticNet(Network):
             The featurized state vector with appended the agent (Machine or Human) feature value            
         """
         # TODO: change (if features[-1]) for 1-hot encoding
-        features = np.array(features)
+        features = np.array(features).squeeze()
         if  len(features.shape)==1:
             agent_control_cost = self.c_M if features[-2] else self.c_H
         else:
-            agent_control_cost = self.c_M*features[:,-2] + self.c_H*features[:,-1]
             
+            agent_control_cost = self.c_M*features[:,-2] + self.c_H*features[:,-1]
         return super().forward(features, lambda inp : inp+agent_control_cost)
 
 if __name__ == '__main__':

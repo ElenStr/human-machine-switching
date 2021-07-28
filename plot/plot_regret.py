@@ -125,8 +125,8 @@ def plot_performance(root_dir, eval_set, agents, optimal_c=None, human_cost_flat
     df = pd.DataFrame({k:pd.Series(v) for k,v in costs_dict.items()} )
     df_ratios = pd.DataFrame({k:pd.Series(v) for k,v in ratios_dict.items()} )
     if ratios_dict:
-        df_ratios.plot(style='.-')
+        df_ratios.plot(style='.-').legend(loc='lower left', bbox_to_anchor=(1.0, 0.5))
 
 
-    df.plot(style='.-')
+    df.plot(style='.-').legend(loc='lower left', bbox_to_anchor=(1.0, 0.5))
     return df, df_ratios
