@@ -4,9 +4,13 @@ import numpy as np
 from plot.plot_path import HUMAN_COLOR, MACHINE_COLOR
 from environments.utils_env import *
 
-CELL_TYPES = ['road', 'grass', 'stone', 'car']
-TRAFFIC_LEVELS = ['no-car', 'light', 'heavy']
+CELL_TYPES = {'road':0, 'grass':1, 'stone':2, 'car':3}
+# CELL_TYPES = {'road':0, 'grass':1, 'car':2}
 
+TRAFFIC_LEVELS = ['no-car', 'light', 'heavy']
+POSITIONS = {'left':0, 'mid':1, 'right':2}
+n_type_wall = len(CELL_TYPES) 
+n_positions = len(POSITIONS)
 TYPE_PROBS = {
     'no-car': {'road': 0.7, 'grass': 0.2, 'stone': 0.1, 'car': 0},
     'light': {'road': 0.6, 'grass': 0.2, 'stone': 0.1, 'car': 0.1},
@@ -148,11 +152,21 @@ class GridWorld:
                 state.append(self.cell_types[r, y+1])
             state.append('wall')
         # state includes min(depth, remaining rows ahead )
+        # if x==0 :
+        #     position = 'left'
+        # elif x==self.width - 1 :
+        #     position = 'right'
+        # else:
+        #     position = 'mid'
+        # state = [position, self.cell_types[x,y]]       
+        # nxt = 1
+
         upper_bound = min(self.depth, self.height-y -1) +1
         for i in range(nxt,upper_bound):
             # state.append(self.traffic_levels[y+i])            
             for r in range(3):
                 state.append(self.cell_types[r, y+i])
+        # state.append(position)
         return state
 
     def current_state(self):
@@ -167,28 +181,7 @@ class GridWorld:
 
         """
         x, y = self.current_coord
-        state = [self.cell_types[x,y]]       
-        nxt = 1
-        # Add wall type if current cell is leftmost (rightmost)
-        # if not in last row
-        if x==0 and y<self.height-1:
-            nxt = 2
-            # state.append(self.traffic_levels[y+1])
-            state.append('wall')
-            for r in range(2):
-                state.append(self.cell_types[r, y+1])
-        elif x==self.width - 1 and y<self.height-1 :
-            nxt = 2
-            # state.append(self.traffic_levels[y+1])
-            for r in range(1,3):
-                state.append(self.cell_types[r, y+1])
-            state.append('wall')
-        # state includes min(depth, remaining rows ahead )
-        upper_bound = min(self.depth, self.height-y -1) +1
-        for i in range(nxt,upper_bound):
-            # state.append(self.traffic_levels[y+i])            
-            for r in range(3):
-                state.append(self.cell_types[r, y+i])
+        state = self.coords2state(x,y)
         return state
 
     def step(self, action):
@@ -298,14 +291,19 @@ class Environment:
 
     def n_state_strings(self, depth, width):
         """State size with string features"""
+        # includes position now
         return 1 + depth*(width)
     
     def n_state_one_hot(self, depth, width):
         """State size in 1-hot encoding"""
-        n_cell_types = len(self.cell_types)
+        # n_cell_types = len(self.cell_types)
         # n_traffic_levels = len(self.traffic_levels)
         # n_state_features_1hot =  n_cell_types + depth*( n_traffic_levels + 1 + width*(n_cell_types + 1))
-        n_state_features_1hot =  n_cell_types + depth*( width*(n_cell_types + 1))
+        # old
+        n_state_features_1hot =  n_type_wall + depth*( width*(n_type_wall ))
+        # add position
+        # n_state_features_1hot =  n_positions + n_cell_types + depth*( width*(n_cell_types))
+
 
         return n_state_features_1hot
 
@@ -358,15 +356,19 @@ class Environment:
         f_v: list
             The onehot represantation of value
         """
-        f_v = [0. for i in range(n_onehot)]
-        f_v[n_onehot - value - 1] = 1.
-        return f_v
+        f_pos = n_onehot - value - 1
+        return f_pos
     @staticmethod
     def agent_feature2net_input(value):
-        return Environment.feature2net_input(value,2)
+        f = [0. ,0.]
+        f_pos = 1 - value
+        f[f_pos] = 1.
+
+        return f
+    
     
     @staticmethod
-    def state2features(state, n_features, real_v=False):
+    def state2features(state, n_features, ignore_grass=False):
         """
         Parameters
         ----------
@@ -384,30 +386,39 @@ class Environment:
         features: list of int
             The state feature vector
         """
+        features = [0. for _ in range(n_type_wall   + (n_features-1) * n_type_wall )]
         
+        feature = CELL_TYPES[state[0]]
+        if ignore_grass and feature == CELL_TYPES['grass']:
+            feature = CELL_TYPES['road']
+        f0_pos = Environment.feature2net_input(feature, n_type_wall )
+        
+        features[f0_pos] = 1.
 
-        cell_t = np.array(CELL_TYPES+['wall'])
-        # traffic_l = np.array(TRAFFIC_LEVELS)
-        features = [0 for _ in range(cell_t.size - 1 + (n_features-1) * cell_t.size )]
-        feature = np.argwhere(cell_t == state[0])[0][0]
-        # TODO: onehot encoding for features
-        if real_v:
-            features.append((feature + 1)*0.2)
-        else:
-            f0 = Environment.feature2net_input(feature, cell_t.size - 1)
-            for i in range(0,cell_t.size-1):
-                features[i] = f0[i]
-
+        base_idx = n_type_wall - 1
         for i in range(1,n_features):
-           
-            state_i =  state[i] if i <= len(state)-1 else 'wall'
-            feature = np.argwhere(cell_t == state_i)[0][0]
-            if real_v:
-                features.append((feature + 1.) * 0.2)
+            if i <= (len(state)-1) and state[i]!='wall':
+                feature = CELL_TYPES[state[i]]
+                if ignore_grass and feature == CELL_TYPES['grass']:
+                    feature = CELL_TYPES['road']
+                
             else:
-                fi = Environment.feature2net_input(feature, cell_t.size)
-                for j in range(0,cell_t.size):
-                    features[cell_t.size-1 + (i-1)*cell_t.size + j] = fi[j]
+                # feature = n_type_wall - 1
+                base_idx+=n_type_wall
+                continue
+                          
+            
+            
+            fi_pos = Environment.feature2net_input(feature, n_type_wall)
+            
+            features[base_idx + fi_pos] = 1.
+            base_idx+=n_type_wall
+           
+        
+        # feature = POSITIONS[state[-1]]
+        
+        # fp_pos = Environment.feature2net_input(feature, n_positions)
 
-
+        # features[base_idx+fp_pos] = 1.
+   
         return features
