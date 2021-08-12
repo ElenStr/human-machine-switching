@@ -332,7 +332,7 @@ class Environment:
             traffics.append(random.choices(self.traffic_levels, traffic_probs)[0])
         self.traffics = traffics
         self.depth = depth
-        base_fn(cells,0,height//2 -1)
+        base_fn(cells,0,height//2)
         scenario_fn(cells, height//2 -1,height)
 
         middle_width = width // 2
