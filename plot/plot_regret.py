@@ -85,33 +85,35 @@ def plot_regret(alg2_regret, greedy_regret, file_name):
 def plot_performance(root_dir, eval_set, agents, optimal_c=None, human_cost_flat=True, human=None):
     costs_dict = {}
     ratios_dict = {}
+    agent_name = {'switch': 'switching', 'fxd':'fixed_policies', 'auto':'machine'}
     n_episodes = 0
     for agent in agents:
         config = agent.split('_')
         on_off = config[np.argwhere(np.array(config)=='We' ).flatten()[0] + 1].strip('T')
+        name = agent_name[agent.split('V')[0]]
         with open(f'{root_dir}/{agent}/costs_{on_off}', 'rb') as file :
             costs = pickle.load(file)
-            costs_dict[agent] = costs
+            costs_dict[name] = costs
         try:
            with open(f'{root_dir}/{agent}/ratios_{on_off}', 'rb') as file :
             ratios = pickle.load(file)
-            ratios_dict[agent] = ratios
+            ratios_dict[name] = ratios
         except:
             pass 
         if 'on' in config and ('off' in config or 'offT' in config):
             try:
                 with open(f'{root_dir}/{agent}/costs_on', 'rb') as file :
                     costs = pickle.load(file)
-                    costs_dict[agent].extend(costs)
+                    costs_dict[name].extend(costs)
             except:
                 pass
             try:
                 with open(f'{root_dir}/{agent}/ratios_on', 'rb') as file :
                     ratios = pickle.load(file)
-                    ratios_dict[agent].extend(ratios)
+                    ratios_dict[name].extend(ratios)
             except:
                 pass
-        n_episodes = max(len(costs_dict[agent]), n_episodes)
+        n_episodes = max(len(costs_dict[name]), n_episodes)
 
     if optimal_c:    
         costs_dict['optimal'] = [optimal_c]* n_episodes
@@ -125,8 +127,8 @@ def plot_performance(root_dir, eval_set, agents, optimal_c=None, human_cost_flat
     df = pd.DataFrame({k:pd.Series(v) for k,v in costs_dict.items()} )
     df_ratios = pd.DataFrame({k:pd.Series(v) for k,v in ratios_dict.items()} )
     if ratios_dict:
-        df_ratios.plot(style='.-').legend(loc='lower left', bbox_to_anchor=(1.0, 0.5))
+        df_ratios.plot(style='.-')#.legend(loc='lower left', bbox_to_anchor=(1.0, 0.5))
 
 
-    df.plot(style='.-').legend(loc='lower left', bbox_to_anchor=(1.0, 0.5))
+    df.plot(style='.-')#.legend(loc='lower left', bbox_to_anchor=(1.0, 0.5))
     return df, df_ratios

@@ -49,11 +49,12 @@ if 'off' in method:
             os.mkdir(traj_path)
         human  = NoisyDriverAgent(env_generator, prob_wrong=estimation_noise, p_ignore_car= p_ignore ,setting=setting, noise_sw=switching_noise, c_H=c_H)
         trajectories = []
-        n_grids_per_scenario = n_traj // len(scenarios)
-        for scen_fn in scenarios:
-            all_env_params = {'scenario_fn': scen_fn,'base_fn': scen_fn, **env_params}
-            traj_sc = gather_human_trajectories(human, env_generator,n_grids_per_scenario,n_try ,**all_env_params) 
-            trajectories.extend(traj_sc)
+        n_grids_per_scenario = n_traj #// len(scenarios)
+        
+        # for scen_fn in scenarios:
+        all_env_params = {'scenario_fn': scenarios[1],'base_fn': scenarios[0], **env_params}
+        traj_sc = gather_human_trajectories(human, env_generator,n_grids_per_scenario,n_try ,**all_env_params) 
+        trajectories.extend(traj_sc)
         random.shuffle(trajectories)
         with open(traj_path+human_path+traj_post_fx+scen_postfix, 'wb') as file:
             pickle.dump(trajectories, file, pickle.HIGHEST_PROTOCOL)
@@ -64,7 +65,7 @@ if 'on' in method :
     ds_on_path = f'{ROOT_DIR}/outputs/on_line_set_{n_episodes}_{init_traffic_level}{scen_postfix}'
     dir_post_fix += f'_on_D{n_episodes/1000}K'
     if human is None:
-        human = NoisyDriverAgent(env_generator, prob_wrong=estimation_noise, setting=setting, noise_sw=switching_noise, c_H=c_H)
+        human = NoisyDriverAgent(env_generator, prob_wrong=estimation_noise,p_ignore_car= p_ignore, setting=setting, noise_sw=switching_noise, c_H=c_H)
 
     try:
         with open(ds_on_path, 'rb') as file:
@@ -73,6 +74,8 @@ if 'on' in method :
         on_line_set = env_generator_fn(n_episodes)
         with open(ds_on_path, 'wb') as file:
             pickle.dump(on_line_set, file, pickle.HIGHEST_PROTOCOL)
+      
+        
 
 try:
     eval_path = f'{ROOT_DIR}/outputs/eval_set{scen_postfix}'
@@ -105,35 +108,45 @@ else:
 
 if 'fxd' in agent:
     # TODO make it work for any method of auto, now works only for same auto and fxd methods
-    machine_agent_name = f'auto{setting}{scen_postfix}_'+'_'.join(list(filter(lambda x: x!='e3', dir_name.split('_')[1:])))
+    start_rest = 1 if scen_postfix == ''else 2
+    # machine_agent_name = f'autoV4{setting}{scen_postfix}_b1_We_offT_D100.0K1R_on_D100.0K_h0.0'
+    machine_agent_name = f'autoV4{setting}{scen_postfix}_'+'_'.join(list(filter(lambda x: x!='e3', dir_name.split('_')[start_rest:])))
     machine_dir = f'{ROOT_DIR}/results/{machine_agent_name}/actor_agent_off'
+    
     try:
         with open(machine_dir, 'rb') as file:
             machine = pickle.load(file) 
             
     except:
+        
         if not os.path.exists(machine_dir):
             os.mkdir( f'{ROOT_DIR}/results/{machine_agent_name}')
         machine_only = FixedSwitchingMachine(n_state_features, optimizer_fn, c_M=c_M, batch_size=batch_size)
         machine_algo = {machine_agent_name: (machine_only, [human, machine])}
+      
         machine_algo, costs = train(machine_algo, trajectories,[], eval_set, eval_freq,  save_freq, batch_size=batch_size, eval_tries=1)
         machine = machine_algo[machine_agent_name][1][1]
     
     machine.trainable = False
 if 'pre' in agent:
     # TODO make it work for any method of auto, now works only for same auto and fxd methods
-    machine_agent_name = f'autopre{setting}{scen_postfix}_'+'_'.join(list(filter(lambda x: x!='e3', dir_name.split('_')[1:])))
+    # machine_agent_name = f'auto{setting}{scen_postfix}_'+'_'.join(list(filter(lambda x: x!='e3', dir_name.split('_')[2:])))
+    machine_agent_name = f'autoV4{setting}{scen_postfix}_b1_We_offT_D10.0K1R_on_D120.0K_h0.0'
+
     machine_dir = f'{ROOT_DIR}/results/{machine_agent_name}/actor_agent_off'
     try:
         with open(machine_dir, 'rb') as file:
             machine = pickle.load(file) 
+        
             
     except:
         if not os.path.exists(machine_dir):
             os.mkdir( f'{ROOT_DIR}/results/{machine_agent_name}')
         machine_only = FixedSwitchingMachine(n_state_features, optimizer_fn, c_M=c_M, batch_size=batch_size)
         machine_algo = {machine_agent_name: (machine_only, [human, machine])}
-        machine_algo, costs = train(machine_algo, trajectories[:50000],[], eval_set, eval_freq,  save_freq, batch_size=batch_size, eval_tries=1)
+        
+        machine_algo, costs = train(machine_algo, trajectories,[], eval_set, eval_freq,  save_freq, batch_size=batch_size, eval_tries=1)
+        
         machine = machine_algo[machine_agent_name][1][1]
 
 human.actual = actual_human
@@ -144,7 +157,11 @@ with open(f'{ROOT_DIR}/{dir_name}_err.out','w', buffering=1) as ferr:
     with open(f'{ROOT_DIR}/{dir_name}.out','w', buffering=1) as f:
         sys.stdout = f
         sys.stderr = ferr
-        algo, costs = train(algo, trajectories, on_line_set, eval_set, eval_freq, save_freq, batch_size=batch_size, eval_tries=eval_tries)
-        sys.stdout = orig_stdout
+        try:
+            algo, costs = train(algo, trajectories, on_line_set, eval_set, eval_freq, save_freq, batch_size=batch_size, eval_tries=eval_tries)
+            sys.stdout = orig_stdout
+        except :
+            sys.stdout = orig_stdout
+            sys.stderr = orig_err        
     sys.stderr = orig_err
 
