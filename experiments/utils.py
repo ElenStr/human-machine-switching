@@ -52,7 +52,7 @@ def learn_evaluate(switching_agent: Agent, acting_agents, envs ,is_learn: bool, 
     if ret_trajectory:
         trajectories = []
     ignore_grass= False
-    if len(acting_agents) > 1 and acting_agents[1].setting == 2 and isinstance(switching_agent, FixedSwitchingMachine):
+    if len(acting_agents) > 1 and (acting_agents[1].setting == 2 or acting_agents[1].setting == 6) and isinstance(switching_agent, FixedSwitchingMachine):
         ignore_grass= True
 
     for i in range(n_try):
@@ -208,7 +208,7 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory_batch, n_
         Average total cost of the trajectory
     """
     ignore_grass= False
-    if acting_agents[1].setting == 2 and isinstance(switching_agent, FixedSwitchingMachine):
+    if (acting_agents[1].setting == 2 or acting_agents[1].setting == 6) and isinstance(switching_agent, FixedSwitchingMachine):
         ignore_grass= True
     machine_picked = []
     rho_tminus1 = 1

@@ -104,7 +104,7 @@ class MachineDriverAgent(Agent):
         """
         # TODO: make machine worse than human+machine e.g. same feature value for road-grass
         set_curr_state = curr_state
-        if self.setting == 2:
+        if self.setting == 2 or self.setting == 6:
             set_curr_state = list(map(lambda x : 'road' if x=='grass' else x, curr_state ))
 
         state_feature_vector  = Environment.state2features(set_curr_state, self.n_state_features)
@@ -245,7 +245,12 @@ class NoisyDriverAgent(Agent):
         p_choose = random.random()
         p_ignore = random.random()
         curr_state_for_human = copy(curr_state)
-        if self.setting!=1:
+        # ignore stone when switching
+        if self.setting >= 4:
+            for i, cell_type in enumerate(curr_state[1:4]):                
+                if cell_type == 'car' and switch:                    
+                    curr_state_for_human[i+1] = 'road'
+        if self.setting!=6:
             for i, cell_type in enumerate(curr_state[1:4]):                
                 if cell_type == 'car' and p_ignore < self.p_ignore_car:                    
                     curr_state_for_human[i+1] = 'road'
