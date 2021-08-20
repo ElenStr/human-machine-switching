@@ -51,9 +51,12 @@ def learn_evaluate(switching_agent: Agent, acting_agents, envs ,is_learn: bool, 
     
     if ret_trajectory:
         trajectories = []
-    ignore_grass= False
-    if len(acting_agents) > 1 and (acting_agents[1].setting == 2 or acting_agents[1].setting == 6) and isinstance(switching_agent, FixedSwitchingMachine):
-        ignore_grass= True
+    # ignore_grass= False
+    # if len(acting_agents) > 1 and (acting_agents[1].setting == 2 or acting_agents[1].setting == 6) and isinstance(switching_agent, FixedSwitchingMachine):
+    #     ignore_grass= True
+    ignore_stone= False
+    if len(acting_agents) > 1 and acting_agents[1].setting == 7 and isinstance(switching_agent, FixedSwitchingMachine):
+        ignore_stone= True
 
     for i in range(n_try):
         # assuming batch = 1 if ret_trajectory
@@ -102,14 +105,14 @@ def learn_evaluate(switching_agent: Agent, acting_agents, envs ,is_learn: bool, 
                     trajectory.append((current_state, action, next_state, cost, grid_id))
                 if is_learn:
                     if switching_agent.trainable:                       
-                        next_features = Environment.state2features(next_state, switching_agent.n_state_features, ignore_grass) 
+                        next_features = Environment.state2features(next_state, switching_agent.n_state_features, ignore_stone) 
                         with torch.no_grad():
                             d_tplus1 = switching_agent.take_action(next_state,train=is_learn, use_target=True)
                             if switching_agent.network.needs_agent_feature :
                                 next_features = [*next_features, *Environment.agent_feature2net_input(d_tplus1)]
                             v_tplus1 = switching_agent.target_network(next_features)
 
-                        features = Environment.state2features(current_state, switching_agent.n_state_features, ignore_grass)
+                        features = Environment.state2features(current_state, switching_agent.n_state_features, ignore_stone)
                         if switching_agent.network.needs_agent_feature :
                             features = [*features, *Environment.agent_feature2net_input(d_t)]
                         v_t = switching_agent.network(features)
@@ -150,8 +153,8 @@ def learn_evaluate(switching_agent: Agent, acting_agents, envs ,is_learn: bool, 
                
                 with torch.no_grad():
                     v_tplus1 = switching_agent.target_network(v_tplus1_inp)
-                    
-                    v_t = switching_agent.target_network(v_t_inp)
+                    # v_t_inp produced with d_t from network
+                    v_t = switching_agent.network(v_t_inp)
             
                 deltas = torch.as_tensor(costs_for_delta) + v_tplus1 - v_t
                 if not deltas.any():
@@ -207,9 +210,12 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory_batch, n_
     total_cost : int
         Average total cost of the trajectory
     """
-    ignore_grass= False
-    if (acting_agents[1].setting == 2 or acting_agents[1].setting == 6) and isinstance(switching_agent, FixedSwitchingMachine):
-        ignore_grass= True
+    # ignore_grass= False
+    # if (acting_agents[1].setting == 2 or acting_agents[1].setting == 6) and isinstance(switching_agent, FixedSwitchingMachine):
+    #     ignore_grass= True
+    ignore_stone= False
+    if acting_agents[1].setting == 7 and isinstance(switching_agent, FixedSwitchingMachine):
+        ignore_stone= True
     machine_picked = []
     rho_tminus1 = 1
     for i in range(n_try):
@@ -237,15 +243,14 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory_batch, n_
                 c_tplus1 = cost + option.control_cost
                 
                 if switching_agent.trainable:
-                    
-                    next_features = Environment.state2features(current_state, switching_agent.n_state_features, ignore_grass) 
+                    next_features = Environment.state2features(next_state, switching_agent.n_state_features, ignore_stone) 
                     with torch.no_grad():
                         d_tplus1 = switching_agent.take_action(next_state, train=True, use_target=True)
                         if switching_agent.network.needs_agent_feature :                        
                             next_features = [*next_features, *Environment.agent_feature2net_input(d_tplus1)]
                         v_tplus1 = switching_agent.target_network(next_features)
 
-                    features = Environment.state2features(current_state, switching_agent.n_state_features, ignore_grass)
+                    features = Environment.state2features(current_state, switching_agent.n_state_features, ignore_stone)
                     if switching_agent.network.needs_agent_feature :
                         features = [*features, *Environment.agent_feature2net_input(d_t)]
                     v_t = switching_agent.network(features)
@@ -263,6 +268,7 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory_batch, n_
                         switching_agent.F_t[b] = i_s + var_rho_prev * switching_agent.F_t[b]
 
                         machine_pi_t = policy.probs[action].item()
+
                         rho = machine_pi_t / mu_t
 
                         var_pi_t = machine_pi_t if d_t else mu_t
@@ -303,6 +309,7 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory_batch, n_
             if switching_agent.trainable and len(td_errors):
                 critic_emphatic_weightings = torch.as_tensor(critic_emphatic_weightings)                
                 td_errors = torch.stack(td_errors)
+              
                 switching_agent.update_policy(critic_emphatic_weightings, td_errors)
 
                 if torch.is_tensor(list(switching_agent.network.parameters())[0].grad):
@@ -315,7 +322,7 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory_batch, n_
                 
                 with torch.no_grad():
                     v_tplus1 = switching_agent.target_network(v_tplus1_inp)
-                    v_t = switching_agent.target_network(v_t_inp)
+                    v_t = switching_agent.network(v_t_inp)
                     
                 deltas = torch.as_tensor(costs_for_delta) + v_tplus1 - v_t
                                       

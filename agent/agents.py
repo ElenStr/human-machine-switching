@@ -106,6 +106,8 @@ class MachineDriverAgent(Agent):
         set_curr_state = curr_state
         if self.setting == 2 or self.setting == 6:
             set_curr_state = list(map(lambda x : 'road' if x=='grass' else x, curr_state ))
+        if self.setting == 7:
+            set_curr_state = list(map(lambda x : 'road' if x=='stone' else x, curr_state ))
 
         state_feature_vector  = Environment.state2features(set_curr_state, self.n_state_features)
         actions_logits = self.network(state_feature_vector)
@@ -168,6 +170,8 @@ class NoisyDriverAgent(Agent):
         """
         super(NoisyDriverAgent, self).__init__()
         self.p_ignore_car = p_ignore_car
+        self.p_ignore_grass = 1.
+
         self.prob_wrong = prob_wrong
         self.noise_sw = noise_sw
         self.type_costs = { **env.type_costs, 'wall':np.inf}
@@ -203,7 +207,7 @@ class NoisyDriverAgent(Agent):
                 return (1 - self.prob_wrong)/n_opt + self.prob_wrong/n_cell
             else:
                 return self.prob_wrong/n_cell
-        elif self.setting != 1:
+        elif self.setting <7:
             n_road = sum(1 for cell in state[1:4] if cell == 'road')
             n_car = sum(1 for cell in state[1:4] if cell == 'car')
             if is_greedy:
@@ -221,7 +225,32 @@ class NoisyDriverAgent(Agent):
                 if next_cell =='car':
                     return self.p_ignore_car * (1 - self.prob_wrong)/(n_road +n_car) + self.prob_wrong/n_cell
                 else:
-                    return self.prob_wrong/n_cell                
+                    return self.prob_wrong/n_cell
+        else:
+            n_road = sum(1 for cell in state[1:4] if cell == 'road')
+            n_grass = sum(1 for cell in state[1:4] if cell == 'grass')
+            if is_greedy:
+                if next_cell == 'road':
+                    mu_a_s =  (1 - self.p_ignore_grass)*(1 - self.prob_wrong)/n_road + self.p_ignore_grass*(1 - self.prob_wrong)/(n_grass + n_road) + self.prob_wrong/n_cell
+                    return mu_a_s
+                elif next_cell == 'grass':
+
+                    return 1/n_grass
+                else:
+                    if 'grass' in state[1:4]:
+
+                        return (1 - self.p_ignore_grass)*(1 - self.prob_wrong)/n_opt  + self.prob_wrong/n_cell
+                    else:
+
+                        return (1 - self.prob_wrong)/n_opt  + self.prob_wrong/n_cell
+            else:
+                if next_cell =='grass':
+
+                    return self.p_ignore_grass * (1 - self.prob_wrong)/(n_road +n_grass) + self.prob_wrong/n_cell
+                else:
+
+                    return self.prob_wrong/n_cell 
+                       
 
     def get_policy(self, state, action, grid_id, next_state):
         if self.actual:
@@ -250,10 +279,15 @@ class NoisyDriverAgent(Agent):
             for i, cell_type in enumerate(curr_state[1:4]):                
                 if cell_type == 'car' and switch:                    
                     curr_state_for_human[i+1] = 'road'
-        if self.setting!=6:
+        if self.setting<6:
             for i, cell_type in enumerate(curr_state[1:4]):                
                 if cell_type == 'car' and p_ignore < self.p_ignore_car:                    
                     curr_state_for_human[i+1] = 'road'
+        if self.setting ==7:
+            for i, cell_type in enumerate(curr_state[1:4]):                
+                if cell_type == 'grass' :                    
+                    curr_state_for_human[i+1] = 'road'
+
         # noisy_next_cell_costs = [self.type_costs[nxt_cell_type] + random.gauss(0,estimation_noise) + random.gauss(0, switch_noise) if nxt_cell_type!='wall' else np.inf for nxt_cell_type, estimation_noise in zip(curr_state[2:5], estimation_noises)]
         noisy_next_cell_costs = [self.type_costs[nxt_cell_type] for nxt_cell_type in curr_state_for_human[1:4]]
 

@@ -368,7 +368,7 @@ class Environment:
     
     
     @staticmethod
-    def state2features(state, n_features, ignore_grass=False):
+    def state2features(state, n_features, ignore_stone=False):
         """
         Parameters
         ----------
@@ -389,7 +389,7 @@ class Environment:
         features = [0. for _ in range(n_type_wall   + (n_features-1) * n_type_wall )]
         
         feature = CELL_TYPES[state[0]]
-        if ignore_grass and feature == CELL_TYPES['grass']:
+        if ignore_stone and feature == CELL_TYPES['stone']:
             feature = CELL_TYPES['road']
         f0_pos = Environment.feature2net_input(feature, n_type_wall )
         
@@ -399,7 +399,7 @@ class Environment:
         for i in range(1,n_features):
             if i <= (len(state)-1) and state[i]!='wall':
                 feature = CELL_TYPES[state[i]]
-                if ignore_grass and feature == CELL_TYPES['grass']:
+                if ignore_stone and feature == CELL_TYPES['stone']:
                     feature = CELL_TYPES['road']
                 
             else:

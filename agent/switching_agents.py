@@ -35,7 +35,7 @@ class FixedSwitchingMachine(Agent):
         self.network = CriticNet(n_state_features[1]+2, c_M)
         self.target_network = CriticNet(n_state_features[1]+2, c_M)
         self.target_network.load_state_dict(self.network.state_dict())
-        self.target_update_freq = 200
+        self.target_update_freq = 5000
         self.timesteps = 0
         self.optimizer = optimizer(self.network.parameters())
         self.n_state_features = n_state_features[0]
