@@ -26,19 +26,19 @@ def env_generator_fn(n_grids):
     random.shuffle(grids)
     return grids
 # Setting and agent config
-setting = 6
+setting = 7
 agent = f'switchV4{setting}{scen_postfix}'
-method = 'on'
+method = 'off_on'
 actual_human = True
 entropy_weight = 0.01
 
 # Dataset sizes for off and online training
-n_traj = 10000
+n_traj = 50000
 n_try = 1 # number of rollouts
-n_episodes = 120000
+n_episodes = 50000
 
 # Human 
-estimation_noise = 0.3 #probablity picking at random
+estimation_noise = 0.0 #probablity picking at random
 switching_noise = 0.0
 p_ignore = 0.0
 c_H = 1.0
