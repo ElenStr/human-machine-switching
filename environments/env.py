@@ -4,6 +4,8 @@ import numpy as np
 from plot.plot_path import HUMAN_COLOR, MACHINE_COLOR
 from environments.utils_env import *
 
+
+
 CELL_TYPES = {'road':0, 'grass':1, 'stone':2, 'car':3}
 # CELL_TYPES = {'road':0, 'grass':1, 'car':2}
 
@@ -368,7 +370,7 @@ class Environment:
     
     
     @staticmethod
-    def state2features(state, n_features, ignore_stone=False):
+    def state2features(state, n_features, obstacle_to_ignore=''):
         """
         Parameters
         ----------
@@ -386,10 +388,12 @@ class Environment:
         features: list of int
             The state feature vector
         """
+         
         features = [0. for _ in range(n_type_wall   + (n_features-1) * n_type_wall )]
         
         feature = CELL_TYPES[state[0]]
-        if ignore_stone and feature == CELL_TYPES['stone']:
+        
+        if obstacle_to_ignore!='' and feature == CELL_TYPES[obstacle_to_ignore]:
             feature = CELL_TYPES['road']
         f0_pos = Environment.feature2net_input(feature, n_type_wall )
         
@@ -399,7 +403,7 @@ class Environment:
         for i in range(1,n_features):
             if i <= (len(state)-1) and state[i]!='wall':
                 feature = CELL_TYPES[state[i]]
-                if ignore_stone and feature == CELL_TYPES['stone']:
+                if obstacle_to_ignore!='' and feature == CELL_TYPES[obstacle_to_ignore]:
                     feature = CELL_TYPES['road']
                 
             else:

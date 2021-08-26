@@ -9,6 +9,7 @@ from agent.switching_agents import FixedSwitchingHuman, FixedSwitchingMachine
 from environments.env import Environment
 from environments.utils_env import *
 from plot.plot_path import HUMAN_COLOR, MACHINE_COLOR, PlotPath
+from config import obstacle_to_ignore
  
 road_mask = np.array([0., 0., 0., 1]*19 + [0.,0.])
 
@@ -51,12 +52,12 @@ def learn_evaluate(switching_agent: Agent, acting_agents, envs ,is_learn: bool, 
     
     if ret_trajectory:
         trajectories = []
-    # ignore_grass= False
-    # if len(acting_agents) > 1 and (acting_agents[1].setting == 2 or acting_agents[1].setting == 6) and isinstance(switching_agent, FixedSwitchingMachine):
-    #     ignore_grass= True
-    ignore_stone= False
-    if len(acting_agents) > 1 and acting_agents[1].setting == 7 and isinstance(switching_agent, FixedSwitchingMachine):
-        ignore_stone= True
+    ignore_obstacle= ''
+    if len(acting_agents) > 1 and (acting_agents[1].setting == 2 or acting_agents[1].setting == 7) and isinstance(switching_agent, FixedSwitchingMachine):
+        ignore_obstacle= obstacle_to_ignore
+    # ignore_stone= False
+    # if len(acting_agents) > 1 and acting_agents[1].setting == 7 and isinstance(switching_agent, FixedSwitchingMachine):
+    #     ignore_stone= True
 
     for i in range(n_try):
         # assuming batch = 1 if ret_trajectory
@@ -105,14 +106,14 @@ def learn_evaluate(switching_agent: Agent, acting_agents, envs ,is_learn: bool, 
                     trajectory.append((current_state, action, next_state, cost, grid_id))
                 if is_learn:
                     if switching_agent.trainable:                       
-                        next_features = Environment.state2features(next_state, switching_agent.n_state_features, ignore_stone) 
+                        next_features = Environment.state2features(next_state, switching_agent.n_state_features, ignore_obstacle) 
                         with torch.no_grad():
                             d_tplus1 = switching_agent.take_action(next_state,train=is_learn, use_target=True)
                             if switching_agent.network.needs_agent_feature :
                                 next_features = [*next_features, *Environment.agent_feature2net_input(d_tplus1)]
                             v_tplus1 = switching_agent.target_network(next_features)
 
-                        features = Environment.state2features(current_state, switching_agent.n_state_features, ignore_stone)
+                        features = Environment.state2features(current_state, switching_agent.n_state_features, ignore_obstacle)
                         if switching_agent.network.needs_agent_feature :
                             features = [*features, *Environment.agent_feature2net_input(d_t)]
                         v_t = switching_agent.network(features)
@@ -210,12 +211,12 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory_batch, n_
     total_cost : int
         Average total cost of the trajectory
     """
-    # ignore_grass= False
-    # if (acting_agents[1].setting == 2 or acting_agents[1].setting == 6) and isinstance(switching_agent, FixedSwitchingMachine):
-    #     ignore_grass= True
-    ignore_stone= False
-    if acting_agents[1].setting == 7 and isinstance(switching_agent, FixedSwitchingMachine):
-        ignore_stone= True
+    ignore_ostacle= ''
+    if (acting_agents[1].setting == 2 or acting_agents[1].setting == 7) and isinstance(switching_agent, FixedSwitchingMachine):
+        ignore_ostacle= obstacle_to_ignore
+    # ignore_stone= False
+    # if acting_agents[1].setting == 7 and isinstance(switching_agent, FixedSwitchingMachine):
+    #     ignore_stone= True
     machine_picked = []
     rho_tminus1 = 1
     for i in range(n_try):
@@ -225,7 +226,7 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory_batch, n_
         for t_batch in trajectory_batch:
             critic_emphatic_weightings = []
             td_errors = []
-            actor_emphatic_weightings =[]
+            actor_emphatic_weightings = []
             deltas = []
             log_pis = []
             entropies = []
@@ -243,14 +244,14 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory_batch, n_
                 c_tplus1 = cost + option.control_cost
                 
                 if switching_agent.trainable:
-                    next_features = Environment.state2features(next_state, switching_agent.n_state_features, ignore_stone) 
+                    next_features = Environment.state2features(next_state, switching_agent.n_state_features, ignore_ostacle) 
                     with torch.no_grad():
                         d_tplus1 = switching_agent.take_action(next_state, train=True, use_target=True)
                         if switching_agent.network.needs_agent_feature :                        
                             next_features = [*next_features, *Environment.agent_feature2net_input(d_tplus1)]
                         v_tplus1 = switching_agent.target_network(next_features)
 
-                    features = Environment.state2features(current_state, switching_agent.n_state_features, ignore_stone)
+                    features = Environment.state2features(current_state, switching_agent.n_state_features, ignore_ostacle)
                     if switching_agent.network.needs_agent_feature :
                         features = [*features, *Environment.agent_feature2net_input(d_t)]
                     v_t = switching_agent.network(features)
