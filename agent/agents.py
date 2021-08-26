@@ -103,7 +103,7 @@ class MachineDriverAgent(Agent):
             The action policy distribution given form the network
         """
         # TODO: make machine worse than human+machine e.g. same feature value for road-grass
-        set_curr_state = curr_state
+        set_curr_state = copy(curr_state)
         if self.setting == 2 or self.setting == 6:
             set_curr_state = list(map(lambda x : 'road' if x=='grass' else x, curr_state ))
         if self.setting == 7:

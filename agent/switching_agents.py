@@ -41,7 +41,7 @@ class FixedSwitchingMachine(Agent):
         self.n_state_features = n_state_features[0]
         self.F_t= np.zeros(batch_size)
         
-        self.var_rho = np.zeros(batch_size)
+        self.var_rho = np.ones(batch_size)
         self.trainable = True
 
 
@@ -101,7 +101,7 @@ class SwitchingAgent(Agent):
 
         self.F_t= np.zeros(batch_size)
         
-        self.var_rho = np.zeros(batch_size)
+        self.var_rho = np.ones(batch_size)
 
         self.trainable = True
         self.n_state_features = n_state_features[0]
