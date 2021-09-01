@@ -18,3 +18,8 @@ __pycache__/definitions.cpython-38.pyc
 plot/__pycache__/__init__.cpython-38.pyc
 environments/__pycache__/env.cpython-38.pyc
 *.out
+
+.ipynb_checkpoints/*
+*/.ipynb_checkpoints/*
+.idea/*
+.DS_Store
