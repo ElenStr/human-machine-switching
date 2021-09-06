@@ -38,7 +38,6 @@ class PlotPath:
         self.cell_types = grid_world.cell_types
         self.img_dir = img_dir
 
-        # lines {(org_x, org_y, dst_x, dst_y, color): count}
         self.lines = defaultdict(int)
 
     def add_line(self, src_state: tuple, dst_state: tuple, color: str):

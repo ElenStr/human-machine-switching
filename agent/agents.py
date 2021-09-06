@@ -60,13 +60,13 @@ class MachineDriverAgent(Agent):
             For off-policy weighting = M_t * rho_t, for on-policy weighting = switch(s) 
 
         delta: torch.LongTensor
-            For off-policy delta = TD_error, for on-policy delta = v(s)
+            TD Error
 
-        current_policy: Categorical
-            The current action policy distribution
+        log_pi: torch.LongTensor
+            The current action log probability
         
-        action: int
-            The action taken
+        entropy: torch.LongTensor
+            The entropy of the current policy distribution
         """
             
         if use_entropy:
@@ -74,7 +74,6 @@ class MachineDriverAgent(Agent):
             self.entropy_weight = self.entropy_weight_0/self.timestep
         else:
             self.entropy_weight = 0
-        # weighting and delta must have been computed with torch.no_grad()
         policy_loss = weighting * delta * log_pi  + self.entropy_weight*entropy
         policy_loss = policy_loss.mean()
         
@@ -99,11 +98,12 @@ class MachineDriverAgent(Agent):
         -------
         action: int
             The action to be taken
+       
         policy: Categorical
             The action policy distribution given form the network
         """
-        # TODO: make machine worse than human+machine e.g. same feature value for road-grass
         set_curr_state = copy(curr_state)
+        # ignore obstacle per scenario
         if self.setting == 2 or self.setting == 6:
             set_curr_state = list(map(lambda x : 'road' if x=='grass' else x, curr_state ))
         if self.setting == 7:
@@ -111,19 +111,11 @@ class MachineDriverAgent(Agent):
 
         state_feature_vector  = Environment.state2features(set_curr_state, self.n_state_features)
         actions_logits = self.network(state_feature_vector)
-        # actions_logits[actions_logits!=actions_logits] = 0
-        valid_action_logits = actions_logits
-        # print("logits", actions_logits)
-
-        # # Never choose wall
-        # if len(curr_state) > 1:
-        #     if curr_state[1] == 'wall':
-        #         valid_action_logits = actions_logits[1:] 
-        #     elif curr_state[3] == 'wall':
-        #         valid_action_logits = actions_logits[:2] 
-
-        policy = torch.distributions.Categorical(logits=valid_action_logits)
+        
+        valid_action_logits = actions_logits      
+        policy = torch.distributions.Categorical(logits=valid_action_logits)        
         valid_action_probs = policy.probs
+        # Normalize log probs within reasonable interval
         if (policy.probs < 1e-5).any():
             valid_action_probs = valid_action_probs.clamp(1e-5,1-1e-5)
             valid_action_probs = valid_action_probs/valid_action_probs.sum()
@@ -137,9 +129,7 @@ class MachineDriverAgent(Agent):
                 valid_action_probs = valid_action_probs/valid_action_probs.sum()
                 valid_action_probs = torch.squeeze(torch.stack([valid_action_probs[0], valid_action_probs[1], torch.tensor(0)]))
             
-        # valid_action_probs = valid_action_probs.clamp(1e-5, 1.)
         valid_policy = torch.distributions.Categorical(probs=valid_action_probs)
-        # print("a", valid_action_probs)
         action = valid_policy.sample().item()
         if len(curr_state) > 1:
             if curr_state[1] == 'wall':
@@ -154,9 +144,9 @@ def dd_init():
     return [0]*3
 
 class NoisyDriverAgent(Agent):
-    def __init__(self, env: Environment, prob_wrong: float, setting=1,  noise_sw=.0, c_H=0., p_ignore_car=0.5):
+    def __init__(self, env: Environment, prob_wrong: float, setting=1, c_H=0., p_ignore_car=0.5):
         """
-        A noisy driver, which chooses the cell with the lowest noisy estimated cost.
+        A noisy driver, which chooses the cell with the lowest perceived cost.
 
         Parameters
         ----------
@@ -165,15 +155,20 @@ class NoisyDriverAgent(Agent):
         prob_wrong : float
             Probability of picking action at random
         
-        noise_sw : float
-            Standard deviation of the Gaussian noise beacuse of switching from Machine to Human
+        setting : int
+            Experimental setting
+
+        c_H: int
+            Human control cost
+
+        p_ignore_car: float
+            Probalility of perceiving car as road.
+
         """
         super(NoisyDriverAgent, self).__init__()
         self.p_ignore_car = p_ignore_car
-        self.p_ignore_grass = 1.
-
+        self.p_ignore_grass = 1. #used only in setting 7
         self.prob_wrong = prob_wrong
-        self.noise_sw = noise_sw
         self.type_costs = { **env.type_costs, 'wall':np.inf}
         self.control_cost = c_H
         self.trainable = False
@@ -184,7 +179,7 @@ class NoisyDriverAgent(Agent):
 
     def update_policy(self, state, action, grid_id):
         """Update policy approximation, needed for the off policy stage"""
-        # The human action in reality depends only on next row
+        # grid_id enables approximation of human policy per multiple grid rollouts
         human_obs = tuple(state)        
         self.policy_approximation[grid_id,human_obs][action]+=1
             
@@ -196,7 +191,7 @@ class NoisyDriverAgent(Agent):
         return p_human_a_s
     
     def get_actual_policy(self, state, next_state):
-        
+        """The true human policy distribution"""
         greedy_cell = min(state[1:4], key=lambda x: self.type_costs[x])
         next_cell = next_state[0]
         is_greedy =   next_cell == greedy_cell        
@@ -270,11 +265,10 @@ class NoisyDriverAgent(Agent):
         if len(curr_state) < 4:            
             return random.randint(0,2)
 
-        switch_noise = self.noise_sw if switch else 0.  
         p_choose = random.random()
         p_ignore = random.random()
         curr_state_for_human = copy(curr_state)
-        # ignore stone when switching
+        # ignore car when switching
         if self.setting >= 4:
             for i, cell_type in enumerate(curr_state[1:4]):                
                 if cell_type == 'car' and switch:                    
@@ -288,9 +282,7 @@ class NoisyDriverAgent(Agent):
                 if cell_type == 'grass' :                    
                     curr_state_for_human[i+1] = 'road'
 
-        # noisy_next_cell_costs = [self.type_costs[nxt_cell_type] + random.gauss(0,estimation_noise) + random.gauss(0, switch_noise) if nxt_cell_type!='wall' else np.inf for nxt_cell_type, estimation_noise in zip(curr_state[2:5], estimation_noises)]
         noisy_next_cell_costs = [self.type_costs[nxt_cell_type] for nxt_cell_type in curr_state_for_human[1:4]]
-
 
         if p_choose < self.prob_wrong:
             if curr_state[1] == 'wall':
@@ -345,6 +337,7 @@ class RandomDriverAgent(Agent):
 
 
 class OptimalAgent():
+    """An agent that returns an optimal planning given a specific episode"""
     def __init__(self, env: GridWorld, control_cost):        
         self.env = env
         self.control_cost = control_cost

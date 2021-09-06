@@ -7,18 +7,16 @@ from environments.utils_env import *
 
 
 CELL_TYPES = {'road':0, 'grass':1, 'stone':2, 'car':3}
-# CELL_TYPES = {'road':0, 'grass':1, 'car':2}
 
 TRAFFIC_LEVELS = ['no-car', 'light', 'heavy']
 POSITIONS = {'left':0, 'mid':1, 'right':2}
-n_type_wall = len(CELL_TYPES) 
+n_cell_type = len(CELL_TYPES) 
 n_positions = len(POSITIONS)
 TYPE_PROBS = {
     'no-car': {'road': 0.7, 'grass': 0.2, 'stone': 0.1, 'car': 0},
     'light': {'road': 0.6, 'grass': 0.2, 'stone': 0.1, 'car': 0.1},
     'heavy': {'road': 0.5, 'grass': 0.2, 'stone': 0.1, 'car': 0.2}
 }
-#DONE: change 
 TRAFFIC_LEVEL_PROBS = {
     'no-car': {'no-car': 0.8, 'light': 0.2, 'heavy': 0},
     'light': {'no-car': 0.2, 'light': 0.6, 'heavy': 0.2},
@@ -39,11 +37,11 @@ class GridWorld:
 
         Parameters
         ----------
-        height : int
-            Height of the grid env
-
         width : int
             Width of the grid env
+
+        height : int
+            Height of the grid env        
 
         cell_types : dict
             Type of each grid cell with coordinate (x, y), i.e., {(x, y): type}.
@@ -69,12 +67,11 @@ class GridWorld:
         self.depth = depth
 
     def next_coords(self, x,y, action):
-        # the new cell after taking 'action'
+        """Coordinates of the next cell if action is taken"""
+        # coordinates of the new cell if 'action' is taken
         x_n, y_n = x + action - 1, y + 1
 
-        # TODO: add termination when hitting a car 
-        # maybe better in step function
-        # the top row
+        # handle top row
         if y_n >= self.height:
             y_n = y
 
@@ -92,11 +89,13 @@ class GridWorld:
     def next_cell(self, action: int, move: bool =True):
         """
         Coordinates of the next cell if action is taken
+        and episode termination
 
         Parameters
         ----------
         action : int
             The action to be taken
+        
         move : bool
             Move to next cell if true
 
@@ -104,6 +103,7 @@ class GridWorld:
         -------
         next_coord : int
             The new coordinates
+
         finished : bool
             If time exceeds the episode length
         """
@@ -113,8 +113,6 @@ class GridWorld:
         # the new cell after taking 'action'
         x_n, y_n = x + action - 1, y + 1
 
-        # TODO: add termination when hitting a car 
-        # maybe better in step function
         finished = False
         # the top row
         if y_n >= self.height:
@@ -143,45 +141,24 @@ class GridWorld:
         # if not in last row
         if x==0 and y<self.height-1:
             nxt = 2
-            # state.append(self.traffic_levels[y+1])
             state.append('wall')
             for r in range(2):
                 state.append(self.cell_types[r, y+1])
         elif x==self.width - 1 and y<self.height-1 :
             nxt = 2
-            # state.append(self.traffic_levels[y+1])
             for r in range(1,3):
                 state.append(self.cell_types[r, y+1])
             state.append('wall')
-        # state includes min(depth, remaining rows ahead )
-        # if x==0 :
-        #     position = 'left'
-        # elif x==self.width - 1 :
-        #     position = 'right'
-        # else:
-        #     position = 'mid'
-        # state = [position, self.cell_types[x,y]]       
-        # nxt = 1
+       
 
         upper_bound = min(self.depth, self.height-y -1) +1
         for i in range(nxt,upper_bound):
-            # state.append(self.traffic_levels[y+i])            
             for r in range(3):
                 state.append(self.cell_types[r, y+i])
-        # state.append(position)
         return state
 
     def current_state(self):
-        """
-        Returns the current state of the MDP in the form of:
-
-        [current_cell_type, features_1, features_2, features_3,..,features_depth ],
-        where features_i is :
-
-        traffic_factor, left_cell_type, mid_cell_type, right_cell type            
-        for the i-th next row
-
-        """
+        """Returns the current state of the MDP"""
         x, y = self.current_coord
         state = self.coords2state(x,y)
         return state
@@ -195,7 +172,7 @@ class GridWorld:
         return next_state, cost, finished
 
     def reset(self):
-        """ resets the trajectory """
+        """ Resets the trajectory """
         self.current_coord = ((self.width - 1) // 2, 0)
 
     def plot_trajectory(self, switching_agent, acting_agents, plt_path, show_cf=False, machine_only=False):
@@ -293,20 +270,11 @@ class Environment:
 
     def n_state_strings(self, depth, width):
         """State size with string features"""
-        # includes position now
         return 1 + depth*(width)
     
     def n_state_one_hot(self, depth, width):
         """State size in 1-hot encoding"""
-        # n_cell_types = len(self.cell_types)
-        # n_traffic_levels = len(self.traffic_levels)
-        # n_state_features_1hot =  n_cell_types + depth*( n_traffic_levels + 1 + width*(n_cell_types + 1))
-        # old
-        n_state_features_1hot =  n_type_wall + depth*( width*(n_type_wall ))
-        # add position
-        # n_state_features_1hot =  n_positions + n_cell_types + depth*( width*(n_cell_types))
-
-
+        n_state_features_1hot =  n_cell_type + depth*( width*(n_cell_type ))
         return n_state_features_1hot
 
     def generate_grid_world(self, width, height, init_traffic_level: str, scenario_fn=lambda c,s,f:two_lanes_obstcales(c,s,f,'grass'), base_fn=lambda c,s,f: two_lanes_obstcales(c,s,f,'grass') , depth=3):
@@ -318,10 +286,13 @@ class Environment:
         ----------
         width : int
             Width of the grid env
+
         height : int
             Height of the grid env
+
         init_traffic_level: str
             Initial traffic level
+
         Returns
         -------
         grid_world: GridWorld
@@ -362,6 +333,7 @@ class Environment:
         return f_pos
     @staticmethod
     def agent_feature2net_input(value):
+        """One-hot encoding of agent feature"""
         f = [0. ,0.]
         f_pos = 1 - value
         f[f_pos] = 1.
@@ -375,13 +347,13 @@ class Environment:
         Parameters
         ----------
         state: list of strings
-            Current cell type and traffic factor and cell types of next rows 
+            Current cell type and cell types of next rows 
 
         n_features: int
             Number of features required by the network
         
-        real_v: bool
-            Return features as real values
+        obstacle_to_ignore: string
+            Obstacle type to be ignored 
 
         Returns
         -------
@@ -389,17 +361,17 @@ class Environment:
             The state feature vector
         """
          
-        features = [0. for _ in range(n_type_wall   + (n_features-1) * n_type_wall )]
+        features = [0. for _ in range(n_cell_type   + (n_features-1) * n_cell_type )]
         
         feature = CELL_TYPES[state[0]]
         
         if obstacle_to_ignore!='' and feature == CELL_TYPES[obstacle_to_ignore]:
             feature = CELL_TYPES['road']
-        f0_pos = Environment.feature2net_input(feature, n_type_wall )
+        f0_pos = Environment.feature2net_input(feature, n_cell_type )
         
         features[f0_pos] = 1.
 
-        base_idx = n_type_wall - 1
+        base_idx = n_cell_type - 1
         for i in range(1,n_features):
             if i <= (len(state)-1) and state[i]!='wall':
                 feature = CELL_TYPES[state[i]]
@@ -407,22 +379,15 @@ class Environment:
                     feature = CELL_TYPES['road']
                 
             else:
-                # feature = n_type_wall - 1
-                base_idx+=n_type_wall
+                base_idx+=n_cell_type
                 continue
                           
             
             
-            fi_pos = Environment.feature2net_input(feature, n_type_wall)
+            fi_pos = Environment.feature2net_input(feature, n_cell_type)
             
             features[base_idx + fi_pos] = 1.
-            base_idx+=n_type_wall
+            base_idx+=n_cell_type
            
-        
-        # feature = POSITIONS[state[-1]]
-        
-        # fp_pos = Environment.feature2net_input(feature, n_positions)
-
-        # features[base_idx+fp_pos] = 1.
    
         return features

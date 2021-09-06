@@ -5,16 +5,13 @@ import numpy as np
 
 def initialize_layer(layer,w_scale=1.):
     nn.init.normal_(layer.weight.data, std=1.)
-    # layer.weight.data.mul_(w_scale)
     nn.init.constant_(layer.bias.data, 0)
-    # return torch.nn.utils.weight_norm(layer)
     return layer
 
 class Network(nn.Module):
     """ 1-layer architecture """
     def __init__(self, dim_in: int, dim_out: int):
         super(Network, self).__init__()
-        #TODO hidden = f(dim_in)
         hidden = int(2**(np.ceil(np.log2(dim_in)) + 1))
         self.input_dim = dim_in
         self.inp_layer = initialize_layer(nn.Linear(dim_in, hidden))
@@ -92,36 +89,13 @@ class OptionCriticNet(Network):
         features: int array-like
             The featurized state vector with appended the agent (Machine or Human) feature value            
         """
-        # TODO: change (if features[-1]) for 1-hot encoding
         features = np.array(features).squeeze()
         if  len(features.shape)==1:
             agent_control_cost = self.c_M if features[-2] else self.c_H
         else:
-            
+            # needed when batch_size > 1
             agent_control_cost = self.c_M*features[:,-2] + self.c_H*features[:,-1]
         return super().forward(features, lambda inp : inp+agent_control_cost)
 
-if __name__ == '__main__':
-    from random import randint
-    from copy import copy
-    depth = 3
-    n_row_features = 4
-    n_state_features = 1 + 3*4
-    n_actions = 3
-    c_M = 0.3
-    c_H = 0
 
-    actor_net = ActorNet(n_state_features, n_actions)
-    critic_net = CriticNet(n_state_features)
-    option_critic = OptionCriticNet(n_state_features+1, c_M, c_H)
-    option_critic_no_control = copy(option_critic)
-    option_critic_no_control.c_M = 0.
-
-    state_inp = [randint(0,1)*1.]*n_state_features
-    option_inp = state_inp+[randint(0,1)*1.]
-
-    print(actor_net(state_inp))
-    print(critic_net(state_inp))
-    print(option_critic(option_inp))
-    print(option_critic_no_control(option_inp))
 
