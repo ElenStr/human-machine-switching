@@ -35,9 +35,10 @@ res_dir = f'{ROOT_DIR}/results'
 if not os.path.exists(res_dir):
     os.mkdir(res_dir)  
 
+# gather trajecotries for offline training
 if 'off' in method:
     traj_path = f'{ROOT_DIR}/outputs/trajectories'
-    human_path = f'/human{setting}_{estimation_noise}_{switching_noise}_{init_traffic_level}_trajectories_{n_traj}_{n_try}'
+    human_path = f'/human{setting}_{estimation_noise}_0.0_{init_traffic_level}_trajectories_{n_traj}_{n_try}'
     dir_post_fix = f'_off{"T" if actual_human else "F"}_D{n_traj / 1000}K{n_try}R'
     try:
         with open(traj_path+human_path+traj_post_fx+scen_postfix, 'rb') as file:
@@ -47,7 +48,7 @@ if 'off' in method:
     except:
         if not os.path.exists(traj_path):
             os.mkdir(traj_path)
-        human  = NoisyDriverAgent(env_generator, prob_wrong=estimation_noise, p_ignore_car= p_ignore ,setting=setting, noise_sw=switching_noise, c_H=c_H)
+        human  = NoisyDriverAgent(env_generator, prob_wrong=estimation_noise, p_ignore_car= p_ignore ,setting=setting, c_H=c_H)
         trajectories = []
         n_grids_per_scenario = n_traj #// len(scenarios)
         
@@ -61,11 +62,12 @@ if 'off' in method:
         with open(traj_path+human_path+'_agent'+traj_post_fx+scen_postfix, 'wb') as file:
             pickle.dump(human, file, pickle.HIGHEST_PROTOCOL)
 
+# generate episodes for online training
 if 'on' in method :
     ds_on_path = f'{ROOT_DIR}/outputs/on_line_set_{n_episodes}_{init_traffic_level}{scen_postfix}'
     dir_post_fix += f'_on_D{n_episodes/1000}K'
     if human is None:
-        human = NoisyDriverAgent(env_generator, prob_wrong=estimation_noise,p_ignore_car= p_ignore, setting=setting, noise_sw=switching_noise, c_H=c_H)
+        human = NoisyDriverAgent(env_generator, prob_wrong=estimation_noise,p_ignore_car= p_ignore, setting=setting, c_H=c_H)
 
     try:
         with open(ds_on_path, 'rb') as file:
@@ -76,7 +78,7 @@ if 'on' in method :
             pickle.dump(on_line_set, file, pickle.HIGHEST_PROTOCOL)
       
         
-
+# generate episodes for testing
 try:
     eval_path = f'{ROOT_DIR}/outputs/eval_set{scen_postfix}'
     with open(eval_path, 'rb') as file:
@@ -109,8 +111,7 @@ else:
 if 'fxd' in agent:
     # TODO make it work for any method of auto, now works only for same auto and fxd methods
     start_rest = 1 if scen_postfix == ''else 2
-    # machine_agent_name = f'autoV4{setting}{scen_postfix}_b1_We_offT_D100.0K1R_on_D100.0K_h0.0'
-    machine_agent_name = f'autoV4{setting}{scen_postfix}_'+'_'.join(list(filter(lambda x: x!='e3', dir_name.split('_')[start_rest:])))
+    machine_agent_name = f'auto{setting}{scen_postfix}_'+'_'.join(list(filter(lambda x: x!='e3', dir_name.split('_')[start_rest:])))
     machine_dir = f'{ROOT_DIR}/results/{machine_agent_name}/actor_agent_off'
     
     try:
@@ -128,26 +129,7 @@ if 'fxd' in agent:
         machine = machine_algo[machine_agent_name][1][1]
     
     machine.trainable = False
-if 'pre' in agent:
-    # TODO make it work for any method of auto, now works only for same auto and fxd methods
-    # machine_agent_name = f'auto{setting}{scen_postfix}_'+'_'.join(list(filter(lambda x: x!='e3', dir_name.split('_')[2:])))
-    machine_agent_name = f'autoV4{setting}{scen_postfix}_b1_We_offT_D10.0K1R_on_D120.0K_h0.0'
 
-    machine_dir = f'{ROOT_DIR}/results/{machine_agent_name}/actor_agent_off'
-    try:
-        with open(machine_dir, 'rb') as file:
-            machine = pickle.load(file) 
-        
-            
-    except:
-        if not os.path.exists(machine_dir):
-            os.mkdir( f'{ROOT_DIR}/results/{machine_agent_name}')
-        machine_only = FixedSwitchingMachine(n_state_features, optimizer_fn, c_M=c_M, batch_size=batch_size)
-        machine_algo = {machine_agent_name: (machine_only, [human, machine])}
-        
-        machine_algo, costs = train(machine_algo, trajectories,[], eval_set, eval_freq,  save_freq, batch_size=batch_size, eval_tries=1)
-        
-        machine = machine_algo[machine_agent_name][1][1]
 
 human.actual = actual_human
 algo = {dir_name: (switch_agent, [human, machine])}
@@ -160,8 +142,10 @@ with open(f'{ROOT_DIR}/{dir_name}_err.out','w', buffering=1) as ferr:
         try:
             algo, costs = train(algo, trajectories, on_line_set, eval_set, eval_freq, save_freq, batch_size=batch_size, eval_tries=eval_tries)
             sys.stdout = orig_stdout
-        except :
+        except Exception as e:
+
             sys.stdout = orig_stdout
             sys.stderr = orig_err        
+            
     sys.stderr = orig_err
 

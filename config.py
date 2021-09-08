@@ -11,6 +11,7 @@ n_actions = 3
 env_generator = Environment()
 env_params = { 'width' : width, 'height':height, 'init_traffic_level': init_traffic_level, 'depth': depth}
 
+# Scenarios stand for different enviornment types (not the scenarios in paper)
 # other_snenarios = [lambda c,s,f: fn(c,s,f,obst) for fn in [two_lanes_obstcales, difficult_grid] for obst in ['car', 'grass']]
 scenarios = [lambda c,s,f: general_grid(c,s,f,env_generator),lambda c,s,f: general_grid(c,s,f,env_generator) ] #+other_snenarios  
 # scenarios = [lambda c,s,f: clean_grass(c,s,f,env_generator), lambda c,s,f: clean_car(c,s,f,env_generator)  ] #+other_snenarios  
@@ -26,35 +27,37 @@ def env_generator_fn(n_grids):
     random.shuffle(grids)
     return grids
 # Setting and agent config
-setting = 7
-agent = f'fxdV4{setting}{scen_postfix}'
+setting = 7 # setting is the same as 'scenario' in paper. set 2 for I, 3 for II and 7 for III  
+agent = f'fxd{setting}{scen_postfix}' # agent can be {auto, fxd, switch} == {machine, fixSwitch, triage}
 method = 'off_on'
 actual_human = True
 entropy_weight = 0.01
 
 # Dataset sizes for off and online training
-n_traj = 10000
+n_traj = 60000
 n_try = 1 # number of rollouts
-n_episodes = 120000
+n_episodes = 200000
 
 # Human 
 estimation_noise = 0.0 #probablity picking at random
-switching_noise = 0.0
 p_ignore = 0.0
 c_H = 1.0
 
 # Machine
 batch_size = 1
-c_M = 0.0 #1 if setting!=2 and setting!=5 else c_H
+if setting == 2:
+    obstacle_to_ignore = 'grass'
+elif setting == 7:
+    obstacle_to_ignore = 'stone'  
+else:
+    obstacle_to_ignore = ''  
+c_M = 1 if setting==3 else 0.0
 lr = 1e-4
 
 # Switching Agent
 # epsilon schedule
 def eps_fn(timestep):
     off_steps = n_traj*n_try if 'off' in method else 0
-    # if timestep < off_steps*20:
-    #     scaled_time = (timestep//20000)//25  + 1
-    #     epsilon = 0.2* 1 / sqrt(scaled_time)
     if timestep < off_steps*19//2 :
         epsilon = 0.2
     elif timestep < off_steps*19:
@@ -72,4 +75,4 @@ epsilon = eps_fn
 n_eval = 1000
 eval_freq = 1000
 save_freq = 5000//batch_size
-eval_tries = 1 #if 'auto' in agent else 3
+eval_tries = 1 #number of evaluation runs
