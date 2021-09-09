@@ -9,8 +9,34 @@
 ## Run experiments
 To run experiments:
 1. Specify the configuration in `config.py`. **Note:** *Scenario I* in paper corresponds to `setting = 2` in code, *Scenario II* in paper corresponds to `setting = 
-3` in code,*Scenario III* in paper corresponds to `setting = 7` in code. To choose method  MACHINE , FIxSWITCH , TRIAGE in paper, set `agent` to {`auto`, `fxd`, `switch`} respectively.
+3` in code,*Scenario III* in paper corresponds to `setting = 7` in code. To choose method  MACHINE , FIXSWITCH , TRIAGE in paper, set `agent` to `auto`, `fxd`, `switch` respectively.
 2. Run: ``` python \run_config.py```
+
+## Outputs and results
+
+Running the above will produce the below:
+1. `outputs/` directory, which will contain the online training grids, the test grids and the recorded human trajectories and agent (the last two under `outputs/trajectories/`).
+2. `results/` directory, which will contain the experiment results directory with the saved agents and metrics.
+3. experiment output and error log files <experiment_name>.out and <experiment_name>\_err.out.
+
+The experiment name's stucture is:
+
+<*method*>V<*scenario*><*env*>\_b<*batch_size*>\_<*entropy*>e
+
+\_off<*true_human*>\_D<*off_grids*>K<*n_try*>R_on\_D<*episodes*>K\_h<*human_noise*>
+
+With the following interpretation:
+* <*method*> is one of `auto`, `fxd`, `switch`
+* V is a separator to facilitate ploting
+* <*scenario*> is the value of `setting` in `config.py` (2 --> *Scenario I*, 3 --> *Scenario II*, 7 --> *Scenario III*)
+* <*env*> is the name of the environment type as defined in `scen_postfix` in `config.py` ('_scGen')
+* <*batch_size*> value of `batch_size` in `config.py` (always 1)
+* <*entropy*> is 'W' if entropy regularization is used in online 'N' otherwise ('W')
+* <*true_human*> is 'T' if there is access to true human policy or 'F' otherwise ('T')
+* <*off_grids*> is the number of grids in which we recorded the human trajectories (in thousands) (60.0)
+* <*n_try*> is the number of recorded human rollouts (human trajectories) per grid (1)
+* <*episodes*> is the number of online training episodes (100.0 for *Scenario I* and *Scenario II* and 200.0 for *Scenario III*)
+* <*human_noise*> is the probability of the human acting at random (always 0.0)
  
 
 ## Code structure of key components
