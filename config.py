@@ -12,6 +12,7 @@ env_generator = Environment()
 env_params = { 'width' : width, 'height':height, 'init_traffic_level': init_traffic_level, 'depth': depth}
 
 # Scenarios stand for different enviornment types (not the scenarios in paper)
+
 # other_snenarios = [lambda c,s,f: fn(c,s,f,obst) for fn in [two_lanes_obstcales, difficult_grid] for obst in ['car', 'grass']]
 scenarios = [lambda c,s,f: general_grid(c,s,f,env_generator),lambda c,s,f: general_grid(c,s,f,env_generator) ] #+other_snenarios  
 # scenarios = [lambda c,s,f: clean_grass(c,s,f,env_generator), lambda c,s,f: clean_car(c,s,f,env_generator)  ] #+other_snenarios  
@@ -26,21 +27,23 @@ def env_generator_fn(n_grids):
     grids.extend(grids_sc)
     random.shuffle(grids)
     return grids
+
 # Setting and agent config
-setting = 7 # setting is the same as 'scenario' in paper. set 2 for I, 3 for II and 7 for III  
-agent = f'fxd{setting}{scen_postfix}' # agent can be {auto, fxd, switch} == {machine, fixSwitch, triage}
+setting = 2 # setting is the same as 'scenario' in paper. set 2 for I, 3 for II and 7 for III  
+agent = f'switch'# agent can be {auto, fxd, switch} == {machine, fixSwitch, triage}
+agent+=f'V{setting}{scen_postfix}' 
 method = 'off_on'
 actual_human = True
 entropy_weight = 0.01
 
-# Dataset sizes for off and online training
-n_traj = 60000
-n_try = 1 # number of rollouts
-n_episodes = 200000
+# Number of episodes for off and online training
+n_traj = 60000 # number of grids in which human acts alone
+n_try = 1 # number of human trajectories per grid to be recorded
+n_episodes = 100000 # online training episodes
 
 # Human 
 estimation_noise = 0.0 #probablity picking at random
-p_ignore = 0.0
+p_ignore = 1.0 
 c_H = 1.0
 
 # Machine
