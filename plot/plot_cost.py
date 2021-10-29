@@ -72,7 +72,7 @@ def plot_performance(root_dir, eval_set, agents, optimal_c=None, human_cost_flat
     ax.set_xlabel(r'Number of episodes ($\times$ $1000$)')
     ax.set_ylabel(r'Average trajectory cost')
     if '2' in config[0] :
-        plt.yticks(list(plt.yticks()[0]) + [50])    
+        plt.yticks(list(plt.yticks()[0][:-1]))    
 
     if '7' in config[0]:
         plt.xticks(list(range(0,260, 50)))
