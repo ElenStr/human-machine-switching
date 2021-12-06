@@ -19,3 +19,4 @@ plot/__pycache__/__init__.cpython-38.pyc
 environments/__pycache__/env.cpython-38.pyc
 *.out
 run_experiments.ipynb
+.ipynb_checkpoints
