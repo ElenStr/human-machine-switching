@@ -44,7 +44,7 @@ n_episodes = 100000 # online training episodes
 # Human 
 estimation_noise = 0.0 #probablity picking at random
 p_ignore = 1.0 
-c_H = 1.0
+c_H = 1.0 if setting==7 else 0
 
 # Machine
 batch_size = 1

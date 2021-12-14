@@ -20,3 +20,6 @@ environments/__pycache__/env.cpython-38.pyc
 *.out
 run_experiments.ipynb
 .ipynb_checkpoints
+bin
+lib
+pyvenv.cfg
