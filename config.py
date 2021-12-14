@@ -1,6 +1,15 @@
 from  numpy import sqrt
 from environments.env import * 
 from environments.utils_env import *
+
+# Configure runs with different seeds
+
+seed_list = [87651234, 12367845, 12783645, 18453627, 37468124, 38294734,2938472,49264719, 58375625]
+# exepetiment will run (run_end - run_start) times
+run_start = 0
+run_end = 3
+
+
 # Environment 
 width = 3
 height = 20
@@ -39,7 +48,7 @@ entropy_weight = 0.01
 # Number of episodes for off and online training
 n_traj = 60000 # number of grids in which human acts alone
 n_try = 1 # number of human trajectories per grid to be recorded
-n_episodes = 100000 # online training episodes
+n_episodes = 200000 if setting==7 else 100000  # online training episodes
 
 # Human 
 estimation_noise = 0.0 #probablity picking at random
@@ -79,3 +88,4 @@ n_eval = 1000
 eval_freq = 1000
 save_freq = 5000//batch_size
 eval_tries = 1 #number of evaluation runs
+
