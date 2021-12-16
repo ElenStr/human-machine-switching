@@ -113,8 +113,7 @@ for run in range(run_start,run_end):
     if 'fxd' in agent:
         # TODO make it work for any method of auto, now works only for same auto and fxd methods
         start_rest = 1 if scen_postfix == ''else 2
-        machine_agent_name = f'auto{setting}{scen_postfix}_'+'_'.join(list(filter(lambda x: x!='e3', dir_name.split('_')[start_rest:])))
-        machine_agent_name+=f'_run{run}'
+        machine_agent_name = f'autoV{setting}{scen_postfix}_'+'_'.join(list(filter(lambda x: x!='e3', dir_name.split('_')[start_rest:])))
         machine_dir = f'{ROOT_DIR}/results/{machine_agent_name}/actor_agent_off'
         
         try:
