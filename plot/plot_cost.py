@@ -9,6 +9,7 @@ import seaborn as sns
 
 from experiments.experiments import evaluate
 from agent.switching_agents import FixedSwitchingHuman
+from definitions import ROOT_DIR
 
 def plot_performance(root_dir, eval_set, agents, optimal_c=None, human_cost_flat=True, human=None):
     # costs_dict = {r'$\textsc{Human}$': {i:[] for i in range(10) },r'$\textsc{Machine}$':{i:[] for i in range(10)}, r'$\textsc{FixSwitch}$':{i:[] for i in range(10)}, r'$\textsc{Triage}$':{i:[] for i in range(10)},r'$\textsc{Opt}$':{i: [] for i in range(10)}}
@@ -113,11 +114,13 @@ def plot_performance(root_dir, eval_set, agents, optimal_c=None, human_cost_flat
   
     ax.set_xlabel(r'Number of episodes ($\times$ $1000$)')
     ax.set_ylabel(r'Average trajectory cost')
-    if '2' in config[0] :
-        plt.yticks(list(plt.yticks()[0][:-1]))    
+    if '2' or '7' in config[0] :
+        plt.yticks(list(plt.yticks()[0][:-1])+[40,50])
+        
 
     if '7' in config[0]:
         plt.xticks(list(range(0,260, 50)))
+    plt.ylim(top=53)
     scen = {'2':1, '3':2,'7':3}
-    # plt.savefig(f'C:/Users/user/Desktop/final_plots/synthetic{scen[config[0][-1]]}_costs_new.pdf')
+    plt.savefig(f'{ROOT_DIR}/plots/synthetic{scen[config[0][-1]]}_costs_10runs.pdf')
     return costs_df , ratios_df

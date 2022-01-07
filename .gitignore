@@ -23,3 +23,13 @@ run_experiments.ipynb
 bin
 lib
 pyvenv.cfg
+plots/scenario_1_4runs.png
+share/jupyter/kernels/python3/kernel.json
+share/jupyter/kernels/python3/logo-32x32.png
+share/jupyter/kernels/python3/logo-64x64.png
+share/man/man1/ipython.1.gz
+plot/plot_cost.py
+.gitignore
+plots/synthetic3_costs_10runs.pdf
+plots/synthetic2_costs_10runs.pdf
+plots/synthetic1_costs_10runs.pdf
