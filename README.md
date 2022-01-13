@@ -37,7 +37,7 @@ With the following interpretation:
 * <*n_try*> is the number of recorded human rollouts (human trajectories) per grid (1)
 * <*episodes*> is the number of online training episodes (100.0 for *Scenario I* and *Scenario II* and 200.0 for *Scenario III*)
 * <*human_noise*> is the probability of the human acting at random (always 0.0)
-* <*#run*> is the number of run (0-9 with the given configuration, one run per seed)
+* <*#run*> is the number of run (0-9 with the given configuration, different seed per run)
  
 
 ## Code structure of key components
