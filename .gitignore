@@ -23,3 +23,9 @@ environments/__pycache__/env.cpython-38.pyc
 */.ipynb_checkpoints/*
 .idea/*
 .DS_Store
+bin
+include
+lib
+lib64
+share
+pyvenv.cfg
