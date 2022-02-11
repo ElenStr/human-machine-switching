@@ -1,5 +1,3 @@
-from collections import defaultdict
-import random
 import torch 
 import numpy as np
 import sys
@@ -8,9 +6,8 @@ from agent.agents import Agent
 from agent.switching_agents import FixedSwitchingHuman, FixedSwitchingMachine
 from environments.env import Environment
 from environments.utils_env import *
-from plot.plot_path import HUMAN_COLOR, MACHINE_COLOR, PlotPath
+from config import obstacle_to_ignore
  
-road_mask = np.array([0., 0., 0., 1]*19 + [0.,0.])
 
 def learn_evaluate(switching_agent: Agent, acting_agents, envs ,is_learn: bool, online_ev=False, grid_id=0,ret_trajectory=False,  n_try=1, batch_size=1):
     """
@@ -33,30 +30,36 @@ def learn_evaluate(switching_agent: Agent, acting_agents, envs ,is_learn: bool, 
         then `n_try = 1`, and we will update the policy for the agents
 
     ret_trajectory: bool
-        To gather and return or not the trajectory
+        To gather and return or not the trajectory/trajectories.
     
     online_ev: bool
         True in online evaluation
+
     grid_id: int
         Used only if ret_trajectory==True, the unique grid id for which 
-        human policy distribution approximation is computed
+        human policy distribution approximation is computed if applied
 
     Returns
     -------
-    total_cost : int
-        Average total cost of the trajectory
+
+    np.mean(total_costs), np.mean(total_machine_picked) : float,float
+        Average total cost of the trajectory and average time machine was picked
+
+    trajectories: list of trajectory
+        The recorded trajectory/-ies while acting in the given GridWorld
     """
     total_costs = []
     total_machine_picked =[]
     
     if ret_trajectory:
         trajectories = []
-    ignore_grass= False
-    if len(acting_agents) > 1 and acting_agents[1].setting == 2 and isinstance(switching_agent, FixedSwitchingMachine):
-        ignore_grass= True
-
+    # Needed s.t. method machine can ingore obstacles (see paper Scenarios I,III)    
+    ignore_obstacle= ''
+    if len(acting_agents) > 1 and (acting_agents[1].setting == 2 or acting_agents[1].setting == 7) and isinstance(switching_agent, FixedSwitchingMachine):
+        ignore_obstacle= obstacle_to_ignore
+    
     for i in range(n_try):
-        # assuming batch = 1 if ret_trajectory
+        # TODO: now works only with batch = 1 if ret_trajectory
         if ret_trajectory:
             trajectory = []       
         for env in envs:
@@ -102,14 +105,14 @@ def learn_evaluate(switching_agent: Agent, acting_agents, envs ,is_learn: bool, 
                     trajectory.append((current_state, action, next_state, cost, grid_id))
                 if is_learn:
                     if switching_agent.trainable:                       
-                        next_features = Environment.state2features(next_state, switching_agent.n_state_features, ignore_grass) 
+                        next_features = Environment.state2features(next_state, switching_agent.n_state_features, ignore_obstacle) 
                         with torch.no_grad():
                             d_tplus1 = switching_agent.take_action(next_state,train=is_learn, use_target=True)
                             if switching_agent.network.needs_agent_feature :
                                 next_features = [*next_features, *Environment.agent_feature2net_input(d_tplus1)]
                             v_tplus1 = switching_agent.target_network(next_features)
 
-                        features = Environment.state2features(current_state, switching_agent.n_state_features, ignore_grass)
+                        features = Environment.state2features(current_state, switching_agent.n_state_features, ignore_obstacle)
                         if switching_agent.network.needs_agent_feature :
                             features = [*features, *Environment.agent_feature2net_input(d_t)]
                         v_t = switching_agent.network(features)
@@ -145,18 +148,15 @@ def learn_evaluate(switching_agent: Agent, acting_agents, envs ,is_learn: bool, 
                         
 
             
-            if is_learn and acting_agents[1].trainable and len(costs_for_delta):
-              
+            if is_learn and acting_agents[1].trainable and len(costs_for_delta):             
                
                 with torch.no_grad():
                     v_tplus1 = switching_agent.target_network(v_tplus1_inp)
-                    
-                    v_t = switching_agent.target_network(v_t_inp)
+                    v_t = switching_agent.network(v_t_inp)
             
                 deltas = torch.as_tensor(costs_for_delta) + v_tplus1 - v_t
                 if not deltas.any():
-                    print('Deltas', file=sys.stderr) 
-                
+                    print('Deltas', file=sys.stderr)                 
                 
                 log_pis = torch.stack(log_pis)
                 entropies = torch.stack(entropies)
@@ -186,7 +186,7 @@ def learn_evaluate(switching_agent: Agent, acting_agents, envs ,is_learn: bool, 
 
 
 
-def learn_off_policy(switching_agent: Agent, acting_agents, trajectory_batch, n_try=1, plt_path=None):
+def learn_off_policy(switching_agent: Agent, acting_agents, trajectory_batch, n_try=1):
     """
     Learn  overall policy off-policy in a grid environment.
 
@@ -204,30 +204,29 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory_batch, n_
     
     Returns
     -------
-    total_cost : int
-        Average total cost of the trajectory
+    np.mean(machine_picked) : float
+        Average times machine was picked
     """
-    ignore_grass= False
-    if acting_agents[1].setting == 2 and isinstance(switching_agent, FixedSwitchingMachine):
-        ignore_grass= True
-    machine_picked = []
-    rho_tminus1 = 1
-    for i in range(n_try):
 
+    # Needed s.t. method machine can ingore obstacles (see paper Scenarios I,III)
+    ignore_ostacle= ''
+    if (acting_agents[1].setting == 2 or acting_agents[1].setting == 7) and isinstance(switching_agent, FixedSwitchingMachine):
+        ignore_ostacle= obstacle_to_ignore
+  
+    machine_picked = []
+    for i in range(n_try):
         
-        first_step = np.ones(trajectory_batch[0].shape[0])
         for t_batch in trajectory_batch:
             critic_emphatic_weightings = []
             td_errors = []
-            actor_emphatic_weightings =[]
+            actor_emphatic_weightings = []
             deltas = []
             log_pis = []
             entropies = []
             costs_for_delta = []
             v_tplus1_inp = []
             v_t_inp = []
-            for b,t in enumerate(t_batch):
-                
+            for b,t in enumerate(t_batch):                
 
                 current_state, action, next_state, cost, grid_id = t            
                 d_t = switching_agent.take_action(current_state, train=True)
@@ -237,54 +236,50 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory_batch, n_
                 c_tplus1 = cost + option.control_cost
                 
                 if switching_agent.trainable:
-                    
-                    next_features = Environment.state2features(current_state, switching_agent.n_state_features, ignore_grass) 
+                    next_features = Environment.state2features(next_state, switching_agent.n_state_features, ignore_ostacle) 
                     with torch.no_grad():
                         d_tplus1 = switching_agent.take_action(next_state, train=True, use_target=True)
                         if switching_agent.network.needs_agent_feature :                        
                             next_features = [*next_features, *Environment.agent_feature2net_input(d_tplus1)]
                         v_tplus1 = switching_agent.target_network(next_features)
 
-                    features = Environment.state2features(current_state, switching_agent.n_state_features, ignore_grass)
+                    features = Environment.state2features(current_state, switching_agent.n_state_features, ignore_ostacle)
                     if switching_agent.network.needs_agent_feature :
                         features = [*features, *Environment.agent_feature2net_input(d_t)]
                     v_t = switching_agent.network(features)
                     
                     td_error = c_tplus1 + v_tplus1 - v_t
-
+                    # behavior policy
                     mu_t = acting_agents[0].get_policy(current_state, action, grid_id, next_state)
-                    
+                    # target policy
                     policy = acting_agents[1].take_action(current_state)[1]
                     with torch.no_grad():
 
                         var_rho_prev = switching_agent.var_rho[b]
-                        i_s = 1 #if sum(features*road_mask) > 6 else 0
+                        i_s = 1
 
                         switching_agent.F_t[b] = i_s + var_rho_prev * switching_agent.F_t[b]
 
                         machine_pi_t = policy.probs[action].item()
+
                         rho = machine_pi_t / mu_t
 
                         var_pi_t = machine_pi_t if d_t else mu_t
                         switching_agent.var_rho[b] = var_pi_t / mu_t
 
-                    emphatic_weighting  = switching_agent.var_rho[b] * switching_agent.F_t[b] 
-                    
-                    
+                    emphatic_weighting  = switching_agent.var_rho[b] * switching_agent.F_t[b]                    
                     
                     if not td_error:
                         print("TD error")
                         print(c_tplus1, v_tplus1, v_t)  
-                        print(current_state, action, next_state)                 
-                        
+                        print(current_state, action, next_state)                    
 
                     if not emphatic_weighting:
                         print('critic emphatic', policy.probs,mu_t,  switching_agent.F_t[b], var_rho_prev)
-
-                    
-                    
+                                       
                     critic_emphatic_weightings.append(emphatic_weighting)
                     td_errors.append(td_error)
+                    
                 if acting_agents[1].trainable:      
                     acting_agents[1].M_t[b] = d_t + var_rho_prev*acting_agents[1].M_t[b]
                     emphatic_weighting = rho * acting_agents[1].M_t[b]
@@ -298,11 +293,11 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory_batch, n_
 
                     log_pis.append(torch.log(policy.probs[torch.as_tensor(action)]))
                     entropies.append(policy.entropy().mean())
-                first_step[b] = 0
 
             if switching_agent.trainable and len(td_errors):
                 critic_emphatic_weightings = torch.as_tensor(critic_emphatic_weightings)                
                 td_errors = torch.stack(td_errors)
+              
                 switching_agent.update_policy(critic_emphatic_weightings, td_errors)
 
                 if torch.is_tensor(list(switching_agent.network.parameters())[0].grad):
@@ -315,7 +310,7 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory_batch, n_
                 
                 with torch.no_grad():
                     v_tplus1 = switching_agent.target_network(v_tplus1_inp)
-                    v_t = switching_agent.target_network(v_t_inp)
+                    v_t = switching_agent.network(v_t_inp)
                     
                 deltas = torch.as_tensor(costs_for_delta) + v_tplus1 - v_t
                                       
@@ -323,9 +318,9 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory_batch, n_
                     print('Deltas', file=sys.stderr) 
                     
                 actor_emphatic_weightings = torch.as_tensor(actor_emphatic_weightings)
-               
                 log_pis = torch.stack(log_pis)
                 entropies = torch.stack(entropies)
+
                 acting_agents[1].update_policy(actor_emphatic_weightings, deltas, log_pis, entropies, use_entropy=False)
                 
                 if torch.is_tensor(list(acting_agents[1].network.parameters())[0].grad):
@@ -338,12 +333,8 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trajectory_batch, n_
                         print(rho, var_rho_prev, acting_agents[1].M_t[0],actor_emphatic_weightings, deltas, log_pis, entropies, current_state, d_t, action, policy.probs)
 
     return np.mean(machine_picked)
-
-            
-            
-
-    
-
+          
+                
 def gather_human_trajectories(human: Agent, env_gen: Environment, n_episodes: int, n_try: int ,**env_params):
     """ 
     Return trajectories induced by human acting alone
@@ -371,7 +362,6 @@ def gather_human_trajectories(human: Agent, env_gen: Environment, n_episodes: in
         The list of the gathered trajectories
 
     """
-    # width, height, init_traffic = env_params['width'], env_params['height'], env_params['init_traffic']
     trajectories = []
     fixed_switch = FixedSwitchingHuman()
     
