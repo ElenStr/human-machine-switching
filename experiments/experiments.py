@@ -52,7 +52,7 @@ def train(algos, trajectories, on_line_set,
         needed for the off-policy stage.
 
     on_line_set: list of Gridworld 
-        The lis of gridworlds to be used in the on-line training
+        The list of gridworlds to be used in the online training
     
     eval_set:
         Evaluation set of environments to keep track on training progress
@@ -61,7 +61,7 @@ def train(algos, trajectories, on_line_set,
         Agents' evaluation frequenncy
 
     save_freq: int
-        Agents' and costs; saving frequency
+        Agents' and costs' saving frequency
 
     verbose : bool
         If `True`, then it will print logs every eval_frequency episodes
@@ -90,7 +90,6 @@ def train(algos, trajectories, on_line_set,
                 switching_agent, acting_agents = agents
                 machine = acting_agents[1]
                 
-                #TODO now batch must contain trajecotries from same grid
                 machine_picked_tr = learn_off_policy(switching_agent, acting_agents, np.resize(np.hstack(traj_batch), (ep_l, batch_size, 5)))
                 machine_picked_ratios_tr[algo].append(machine_picked_tr)
                 # print log
