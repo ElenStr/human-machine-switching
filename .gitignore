@@ -29,3 +29,4 @@ lib
 lib64
 share
 pyvenv.cfg
+etc/jupyter/nbconfig/notebook.d/widgetsnbextension.json
