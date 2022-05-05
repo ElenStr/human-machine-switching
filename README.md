@@ -23,7 +23,7 @@ The experiment name's stucture is:
 
 <*method*>V<*scenario*><*env*>\_b<*batch_size*>\_<*entropy*>e
 
-\_off<*true_human*>\_D<*off_grids*>K<*n_try*>R_on\_D<*episodes*>K\_h<*human_noise*>
+\_off<*true_human*>\_D<*off_grids*>K<*n_try*>R_on\_D<*episodes*>K\_h<*human_noise*>\_run<*#run*>
 
 With the following interpretation:
 * <*method*> is one of `auto`, `fxd`, `switch`
@@ -37,6 +37,7 @@ With the following interpretation:
 * <*n_try*> is the number of recorded human rollouts (human trajectories) per grid (1)
 * <*episodes*> is the number of online training episodes (100.0 for *Scenario I* and *Scenario II* and 200.0 for *Scenario III*)
 * <*human_noise*> is the probability of the human acting at random (always 0.0)
+* <*#run*> is the number of run (0-9 with the given configuration, different seed per run)
  
 
 ## Code structure of key components
