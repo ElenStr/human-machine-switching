@@ -23,8 +23,11 @@ environments/__pycache__/env.cpython-38.pyc
 */.ipynb_checkpoints/*
 .idea/*
 .DS_Store
-lib/*
-bin/*
-plots
+bin
+include
+lib
+lib64
 share
 pyvenv.cfg
+etc/jupyter/nbconfig/notebook.d/widgetsnbextension.json
+processed_trips.csv

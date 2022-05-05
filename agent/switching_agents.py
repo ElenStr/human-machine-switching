@@ -35,13 +35,12 @@ class FixedSwitchingMachine(Agent):
         self.network = CriticNet(n_state_features[1]+2, c_M)
         self.target_network = CriticNet(n_state_features[1]+2, c_M)
         self.target_network.load_state_dict(self.network.state_dict())
-        self.target_update_freq = 200
+        self.target_update_freq = 5000
         self.timesteps = 0
         self.optimizer = optimizer(self.network.parameters())
         self.n_state_features = n_state_features[0]
-        self.F_t= np.zeros(batch_size)
-        
-        self.var_rho = np.zeros(batch_size)
+        self.F_t= np.zeros(batch_size)        
+        self.var_rho = np.ones(batch_size)
         self.trainable = True
 
 
@@ -49,7 +48,6 @@ class FixedSwitchingMachine(Agent):
         """Return input batch  for training"""
         pass
 
-# Need to use njit decorator?
     def update_policy(self, weighting, td_error, do_update=True):
         """
         Implement train step 
@@ -60,15 +58,12 @@ class FixedSwitchingMachine(Agent):
             For off-policy weighting = F_t * rho_t, for on-policy weighting = 1
 
         td_error: torch.LongTensor
-            TD_error c + V(s+1)  - V(s)
+            TD_error c(s,a) + V(s+1)  - V(s)
         """
         if self.timesteps % self.target_update_freq ==0:
             self.target_network.load_state_dict(self.network.state_dict())
         self.timesteps+=1
-        # weighting and c'(s,a) + V(s+1) must have been computed with torch.no_grad()
-        # maybe weighting needs clamp(0,1)!!!
         v_loss = td_error.pow(2).mul(0.5).mul(weighting)
-        # TODO: v_loss = v_loss.mean() for batch update
         v_loss = v_loss.mean()
 
         self.optimizer.zero_grad()
@@ -96,13 +91,9 @@ class SwitchingAgent(Agent):
         self.target_update_freq = 5000
         self.timesteps = 0
         self.epsilon_fn = eps_fn
-        self.epsilon = self.epsilon_fn(0)
-        
-
+        self.epsilon = self.epsilon_fn(0)      
         self.F_t= np.zeros(batch_size)
-        
-        self.var_rho = np.zeros(batch_size)
-
+        self.var_rho = np.ones(batch_size)
         self.trainable = True
         self.n_state_features = n_state_features[0]
 
@@ -111,8 +102,7 @@ class SwitchingAgent(Agent):
         """Return input batch  for training"""
         pass
 
-# Need to use njit decorator?
-    def update_policy(self, weighting, td_error, do_update=True):
+    def update_policy(self, weighting, td_error):
         """
         Implement train step 
 
@@ -122,23 +112,15 @@ class SwitchingAgent(Agent):
             For off-policy weighting = F_t * rho_t, for on-policy weighting = 1
 
         td_error: torch.LongTensor
-            TD_error c + switch(s+1)*Q(s+1, M) + (1-switch(s+1))*Q(s+1, H)
+            TD_error c(s,a) + switch(s+1)*Q(s+1, M) + (1-switch(s+1))*Q(s+1, H)
             - (switch(s)*Q(s, M) + (1-switch(s))*Q(s, H))
         """
         if self.timesteps % self.target_update_freq ==0:
             self.target_network.load_state_dict(self.network.state_dict())
         
-        self.epsilon = self.epsilon_fn(self.timesteps)
-        
-
-
-            
+        self.epsilon = self.epsilon_fn(self.timesteps)         
         self.timesteps+=1
-        # weighting and c'(s,a) + V(s+1) must have been computed with torch.no_grad()
-        # maybe weighting needs clamp(0,1)!!!
-        v_loss = td_error.pow(2).mul(0.5).mul(weighting)
-        
-        
+        v_loss = td_error.pow(2).mul(0.5).mul(weighting)       
         v_loss = v_loss.mean()
         self.optimizer.zero_grad()
         v_loss.backward()
@@ -147,42 +129,24 @@ class SwitchingAgent(Agent):
 
 
     def take_action(self, curr_state, train=True, online=False, use_target=False):
-        """
-        Return the switching decision given the current state 
-
-        Parameters
-        ----------
-        curr_state: list of strings
-            Current state vector 
+        """Return the switching decision (0 or 1) given the current state"""
         
-        Returns
-        -------
-        switch: int
-            The switching decision
-        """
-        # start machine training in off policy
-        # if train and any(self.F_t==0):
-        #     return 1
         network = self.network if not use_target else self.target_network
         state_feature_vector  = Environment.state2features(curr_state, self.n_state_features)
         human_option_value = network(state_feature_vector + [0.,1.]).detach().item()
         machine_option_value = network(state_feature_vector + [1.,0.]).detach().item()
         p = random.random()
-        # epsilon greedy only when training
+        # epsilon greedy only when training or in online evaluation
         epsilon = self.epsilon if train or online else 0.0
         if p < 1- epsilon:
             switch =  int(human_option_value >= machine_option_value)
         else:
             switch = random.choices([0, 1], [.5, .5])[0]
-        # if human_option_value> machine_option_value : 
-        #     print(human_option_value, machine_option_value, switch)
         return switch 
 
 
 class SwitchHardFixed(Agent):
-    """
-    Switching policy chooses always human
-    """
+    """Hard coded switching to human whever there is grass"""
     def __init__(self):
         super(SwitchHardFixed, self).__init__()
         self.trainable = False
