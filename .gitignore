@@ -33,3 +33,4 @@ plot/plot_cost.py
 plots/synthetic3_costs_10runs.pdf
 plots/synthetic2_costs_10runs.pdf
 plots/synthetic1_costs_10runs.pdf
+.DS_Store

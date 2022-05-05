@@ -6,8 +6,8 @@ from environments.utils_env import *
 
 seed_list = [87651234, 12367845, 12783645, 18453627, 37468124, 38294734,2938472,49264719, 58375625]
 # exepetiment will run (run_end - run_start) times
-run_start = 0
-run_end = 3
+run_start = 6
+run_end = 9
 
 
 # Environment 
@@ -38,8 +38,8 @@ def env_generator_fn(n_grids):
     return grids
 
 # Setting and agent config
-setting = 2 # setting is the same as 'scenario' in paper. set 2 for I, 3 for II and 7 for III  
-agent = f'switch'# agent can be {auto, fxd, switch} == {machine, fixSwitch, triage}
+setting = 7 # setting is the same as 'scenario' in paper. set 2 for I, 3 for II and 7 for III  
+agent = f'fxd'# agent can be {auto, fxd, switch} == {machine, fixSwitch, triage}
 agent+=f'V{setting}{scen_postfix}' 
 method = 'off_on'
 actual_human = True
