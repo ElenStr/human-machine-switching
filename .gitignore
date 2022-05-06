@@ -32,3 +32,4 @@ pyvenv.cfg
 etc/jupyter/nbconfig/notebook.d/widgetsnbextension.json
 processed_trips.csv
 plots
+*.json
