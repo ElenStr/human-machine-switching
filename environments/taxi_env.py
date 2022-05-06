@@ -16,7 +16,7 @@ def get_distance(G, node_id_u, node_id_v):
     
     u_coords =  get_lat_lon(G, node_id_u)
     v_coords =  get_lat_lon(G, node_id_v)
-    distance_km = ox.distance.great_circle_vec(u_coords,v_coords)/1000
+    distance_km = ox.distance.great_circle_vec(*u_coords,*v_coords)/1000
     
     return distance_km
 
@@ -55,7 +55,7 @@ def get_angle(G, node_id_u, node_id_v):
 
 class MapEnv:
     def __init__(self, graph: networkx.classes.multidigraph.MultiDiGraph):
-        self.G = graph
+        self.G = self._remove_dead_ends(graph)
         self.MAX_OUT_DEGREE = max(list(map(lambda x: len(self.G.out_edges(x)), self.G.nodes)))
         
         #  Set reference node to distinuish between nodes
@@ -96,7 +96,7 @@ class MapEnv:
         state = self.current_state()
         cost = self._find_edge_cost((prev_curr_node, next_node), state[1][1])
         
-        # dead-end nodes
+        # TODO check if there are dead-end nodes after cleaning up trips
         dead_end = not len(self.neighbors)
         finished = self.current_node == self.dest_node or dead_end
         
@@ -148,6 +148,24 @@ class MapEnv:
         dist_from_target += (self.G.out_degree(edge[1]) == 0)*1000
         # cost in Km
         return self.G.get_edge_data(edge[0], edge[1])[0]['length']/1000 + dist_from_target
+
+    def _remove_dead_ends(self, graph):
+        done = False
+        while not done: 
+            dead_ends = [] 
+            for id in graph.nodes:
+                # find sink nodes 
+                if graph.out_degree(id) == 0:
+                    dead_ends.append(id)
+                    # remove parent of sink that will also become sink
+                    for pred in graph.predecessors(id):
+                        if graph.out_degree(pred) == 1:
+                            dead_ends.append(pred)
+            if not len(dead_ends):
+                done = True
+            for id in dead_ends:
+                graph.remove_node(id)
+                
 
 
     @staticmethod
