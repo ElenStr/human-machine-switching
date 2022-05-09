@@ -89,7 +89,12 @@ def trips_with_missing_nodes(processed_trip_path, proc_graph, ref_graph):
         return trips_to_exclude,list(set(nodes_to_exclude))
                     
 def graph_from_trips(trips_path, graph, ref_graph):
-    """Return a graph that corresponds to the trips_path"""
+    """Return a graph that corresponds to the trips_path. 
+       The final graph contains only nodes that are in the trips"""
+
+    for node in graph.nodes():
+        graph.nodes[node]['trips'] = []
+
     with open(trips_path, 'r') as f:
         reader = csv_reader(f)
         for i,row in enumerate(reader):
@@ -101,10 +106,13 @@ def graph_from_trips(trips_path, graph, ref_graph):
                 for node in [u,v]:
                     try:                
                         graph.nodes[node]
+                        graph.nodes[node]['trips'].append(trip_id)
                     except KeyError:
                         try:
                             ref_graph.nodes[node]
                             graph.add_node(node)
+                            graph.nodes[node]['trips'].append(trip_id)
+
                             for key,val in ref_graph.nodes[node].items():
                                 graph.nodes[node][key] = val
                             
@@ -122,8 +130,15 @@ def graph_from_trips(trips_path, graph, ref_graph):
                     except KeyError:
                         graph.remove_node(u)
                         graph.remove_node(v)
+
+        for node in graph.nodes():
+            if len(graph.nodes[node]['trips']) == 0:
+                graph.remove(node)
+       
+        has_dead_ends = min(list(map(lambda x: graph.out_degree(x), graph.nodes()))) > 0
+        
             
-    return graph
+    return graph, has_dead_ends
 
 
                         

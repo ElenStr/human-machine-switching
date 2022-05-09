@@ -59,7 +59,7 @@ def write_valid_trips(new_trips_path, old_trips_path, graph, ref_graph, valid_fn
 if '__name__'=='__main__':
     trips_no_mfinish_no_missing_nodes = './data/no_mfin_no_mis_nodes.csv'
     old_trips = './processed_trips.csv'
-    new_trips_path='data/cleaned_up_trips.csv'
+    final_trips_path='data/cleaned_up_trips.csv'
     graph_path = 'data/Porto_driving.osm'
     G = ox.graph_from_xml(graph_path)
     ref_G = ox.graph_from_place('Distrito do Porto, PT', clean_periphery=False,network_type='drive')
@@ -67,9 +67,17 @@ if '__name__'=='__main__':
 
     write_valid_trips(new_trips_path=trips_no_mfinish_no_missing_nodes, old_trips_path=old_trips, graph=G, ref_graph=ref_G, valid_fn=corrupted_trips)
 
-    graph_with_no_missing_nodes = graph_from_trips(trips_no_mfinish_no_missing_nodes,G, ref_G)
+    graph_with_no_missing_nodes, has_dead_ends = graph_from_trips(trips_no_mfinish_no_missing_nodes,G, ref_G)
+    tmp_graph = graph_with_no_missing_nodes
+    tmp_path = trips_no_mfinish_no_missing_nodes 
+    while not has_dead_ends:
 
-    write_valid_trips(new_trips_path,trips_no_mfinish_no_missing_nodes,graph=graph_with_no_missing_nodes)
+        write_valid_trips(final_trips_path,tmp_path,graph=tmp_graph, ref_graph=ref_G, valid_fn=trips_with_dead_ends)
+
+        final_graph, has_dead_ends = graph_from_trips(final_trips_path, tmp_graph, ref_G)
+        tmp_graph = final_graph
+        tmp_path = final_trips_path
+
 
 
 # def trips_to_remove_save_filled_graph(trips_path, graph_path):
