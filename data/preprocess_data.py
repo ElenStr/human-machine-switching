@@ -100,8 +100,8 @@ if __name__=='__main__':
 
         final_graph, has_dead_ends = graph_from_trips(final_trips_path, tmp_graph, ref_G)
 
-        
-        save_osm_graph(final_graph, "./data/final_graph.som")
+        # LOAD WITH simplify=FALSE !!!!!
+        save_osm_graph(final_graph, "./data/final_graph.osm")
         
         print(has_dead_ends, final_graph.number_of_nodes(), final_graph.number_of_edges() )
        
