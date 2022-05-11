@@ -1,6 +1,6 @@
+from environments.env import Environment
 import networkx
 import numpy as np
-from sklearn.metrics.pairwise import haversine_distances
 from math import radians, sin, cos, atan2,degrees
 import osmnx as ox
 # state: (current node number, destination node number)
@@ -53,7 +53,7 @@ def get_angle(G, node_id_u, node_id_v):
 
 
 
-class MapEnv:
+class MapEnv(Environment):
     def __init__(self, graph: networkx.classes.multidigraph.MultiDiGraph):
         self.G = self._remove_dead_ends(graph)
         self.MAX_OUT_DEGREE = max(list(map(lambda x: len(self.G.out_edges(x)), self.G.nodes)))
