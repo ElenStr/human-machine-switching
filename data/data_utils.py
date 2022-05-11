@@ -28,7 +28,7 @@ def trips_mutli_finish(processed_trip_path):
         for i,row in enumerate(reader):
             # if finished
             if row[2] == 'True':
-                trip_id = float(row[4])
+                trip_id = int(float(row[4]))
                 # First trip that finishes
                 if not len(all_trips):
                     # Check if it finishes again
@@ -56,7 +56,7 @@ def trips_with_missing_nodes(processed_trip_path, proc_graph, ref_graph):
         nodes_to_exclude = []
         for i,row in enumerate(reader):
             if i > 0:
-                trip_id = float(row[4])
+                trip_id = int(float(row[4]))
                 u = int(row[0])
                 v = int(row[1])
                 if (not len(trips_to_exclude)) or trip_id!=trips_to_exclude[-1]:      
@@ -70,19 +70,22 @@ def trips_with_missing_nodes(processed_trip_path, proc_graph, ref_graph):
                                 for key,val in ref_graph.nodes[node].items():
                                     graph.nodes[node][key] = val
                                 
-                                if not graph.has_edge(u,v):
-                                    length = row[3]
-                                    if length == '':
-                                        length = get_distance(ref_graph,u,v)
-                                    else:
-                                        length = float(length)
-                                        
-                                    graph.add_edge(u,v, length=length)
                             except KeyError:
                                 if (not len(trips_to_exclude)) or trip_id!=trips_to_exclude[-1]:
                                     trips_to_exclude.append(trip_id)
                                     nodes_to_exclude.append(node)
-                                    
+                    try:                
+                        if not graph.has_edge(u,v):
+                            length = row[3]
+                            if length == '':
+                                length = get_distance(ref_graph,u,v)
+                            else:
+                                length = float(length)
+                                
+                            graph.add_edge(u,v, length=length)
+                    except KeyError:
+                            if (not len(trips_to_exclude)) or trip_id!=trips_to_exclude[-1]:
+                                trips_to_exclude.append(trip_id)
                                    
 
                         
@@ -99,7 +102,7 @@ def graph_from_trips(trips_path, graph, ref_graph):
         reader = csv_reader(f)
         for i,row in enumerate(reader):
             if i > 0:
-                trip_id = float(row[4])
+                trip_id = int(float(row[4]))
                 u = int(row[0])
                 v = int(row[1])
                 
@@ -154,7 +157,7 @@ def add_trip_ids_to_nodes(processed_trip_path,graph):
         k = 0
         for i,row in enumerate(reader):
             if i > 0:
-                trip_id = float(row[4])
+                trip_id = int(float(row[4]))
                 u = int(row[0])
                 v = int(row[1])
                 
