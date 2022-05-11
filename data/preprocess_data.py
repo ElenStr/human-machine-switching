@@ -84,20 +84,27 @@ if __name__=='__main__':
     print(f"{get_cur_time_str()} Downloading Porto Graph...")
     ref_G = ox.graph_from_place('Distrito do Porto, PT', clean_periphery=False,network_type='drive')
 
-    print(f"{get_cur_time_str()} Writing single finish trips with known nodes")
-    write_valid_trips(new_trips_path=trips_no_mfinish_no_missing_nodes, old_trips_path=old_trips, graph=G, ref_graph=ref_G, valid_fn=corrupted_trips)
-
-    exit()
+    # print(f"{get_cur_time_str()} Writing single finish trips with known nodes")
+    # write_valid_trips(new_trips_path=trips_no_mfinish_no_missing_nodes, old_trips_path=old_trips, graph=G, ref_graph=ref_G, valid_fn=corrupted_trips)
+    print(f"{get_cur_time_str()} Syncing graph to trips...")
+    
     graph_with_no_missing_nodes, has_dead_ends = graph_from_trips(trips_no_mfinish_no_missing_nodes,G, ref_G)
+    print(has_dead_ends)
+
     tmp_graph = graph_with_no_missing_nodes
     tmp_path = trips_no_mfinish_no_missing_nodes  
-    while not has_dead_ends:
+    # TODO: works in our case, but make it work in the general case (new dead ends may appear every time)
+    if has_dead_ends:
 
         write_valid_trips(final_trips_path,tmp_path,graph=tmp_graph, ref_graph=ref_G, valid_fn=trips_with_dead_ends)
 
         final_graph, has_dead_ends = graph_from_trips(final_trips_path, tmp_graph, ref_G)
-        tmp_graph = final_graph
-        tmp_path = final_trips_path
+
+        
+        save_osm_graph(final_graph, "./data/final_graph.som")
+        
+        print(has_dead_ends, final_graph.number_of_nodes(), final_graph.number_of_edges() )
+       
 
 
 

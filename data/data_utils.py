@@ -91,10 +91,10 @@ def trips_with_missing_nodes(processed_trip_path, proc_graph, ref_graph):
                         
         return trips_to_exclude,list(set(nodes_to_exclude))
                     
-def graph_from_trips(trips_path, graph, ref_graph):
+def graph_from_trips(trips_path, tmp_graph, ref_graph):
     """Return a graph that corresponds to the trips_path. 
        The final graph contains only nodes that are in the trips"""
-
+    graph = deepcopy(tmp_graph)
     for node in graph.nodes():
         graph.nodes[node]['trips'] = []
 
@@ -114,32 +114,32 @@ def graph_from_trips(trips_path, graph, ref_graph):
                         try:
                             ref_graph.nodes[node]
                             graph.add_node(node)
-                            graph.nodes[node]['trips'].append(trip_id)
+                            graph.nodes[node]['trips'] = [trip_id]
 
                             for key,val in ref_graph.nodes[node].items():
                                 graph.nodes[node][key] = val
                             
                         except KeyError:
                             graph.remove_node(node)
-                    try:
-                        if not graph.has_edge(u,v):
-                            length = row[3]
-                            if length == '':
-                                length = get_distance(ref_graph,u,v)
-                            else:
-                                length = float(length)
-                                
-                            graph.add_edge(u,v, length=length)
-                    except KeyError:
-                        graph.remove_node(u)
-                        graph.remove_node(v)
-
-        for node in graph.nodes():
-            if len(graph.nodes[node]['trips']) == 0:
-                graph.remove(node)
-       
-        has_dead_ends = min(list(map(lambda x: graph.out_degree(x), graph.nodes()))) > 0
+                try:
+                    if not graph.has_edge(u,v):
+                        length = row[3]
+                        if length == '':
+                            length = get_distance(ref_graph,u,v)
+                        else:
+                            length = float(length)
+                            
+                        graph.add_edge(u,v, length=length)
+                except KeyError:
+                    graph.remove_node(u)
+                    graph.remove_node(v)
+        t_g = deepcopy(graph)      
+        for node in t_g.nodes():
+            if len(t_g.nodes[node]['trips']) == 0:
+                graph.remove_node(node)
         
+        has_dead_ends = min(list(map(lambda x: graph.out_degree(x), graph.nodes))) == 0
+        print('HI')
             
     return graph, has_dead_ends
 
@@ -170,7 +170,7 @@ def add_trip_ids_to_nodes(processed_trip_path,graph):
     return graph
 
 
-def trips_with_dead_ends(valid_graph):
+def trips_with_dead_ends(trips_path, valid_graph, ref_graph):
     graph = deepcopy(valid_graph)
     done = False
     trips_with_dead_ends = []
@@ -191,4 +191,18 @@ def trips_with_dead_ends(valid_graph):
             done = True
         for id in dead_ends:
             graph.remove_node(id)
-    return trips_with_dead_ends
+    
+    return sorted(list(set(trips_with_dead_ends)))
+
+def save_osm_graph(graph, file):
+    utn = ox.settings.useful_tags_node
+    oxna = ox.settings.osm_xml_node_attrs
+    oxnt = ox.settings.osm_xml_node_tags
+    utw = ox.settings.useful_tags_way
+    oxwa = ox.settings.osm_xml_way_attrs
+    oxwt = ox.settings.osm_xml_way_tags
+    utn = list(set(utn + oxna + oxnt))
+    utw = list(set(utw + oxwa + oxwt))
+    ox.config(all_oneway=True, useful_tags_node=utn, useful_tags_way=utw)
+
+    ox.save_graph_xml(graph, filepath=file)
