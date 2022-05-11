@@ -33,8 +33,8 @@ class MachineDriverAgent(Agent):
     def __init__(self, n_state_features, n_actions, optimizer, setting=1, c_M=0., entropy_weight=0.01, batch_size=1):
         """Initialize network and hyperparameters"""
         super(MachineDriverAgent, self).__init__()
-        # n_state_features[1] is the network input size
-        self.network = ActorNet(n_state_features[1], n_actions)
+        # n_state_features is the state size
+        self.network = ActorNet(n_state_features, n_actions)
         self.optimizer = optimizer(self.network.parameters())
         self.entropy_weight_0 = entropy_weight
         self.timestep = 0
@@ -42,8 +42,7 @@ class MachineDriverAgent(Agent):
         self.trainable = True
         self.M_t = np.zeros(batch_size)
         self.setting = setting
-        # n_state_features[0] is the number of state features
-        self.n_state_features = n_state_features[0]
+        self.n_state_features = n_state_features
 
 
     def update_obs(self, *args):
@@ -91,7 +90,7 @@ class MachineDriverAgent(Agent):
 
         Parameters
         ----------
-        curr_state: list of strings
+        curr_state: list of angle distance pairs
             Current state vector 
         
         Returns
@@ -103,41 +102,19 @@ class MachineDriverAgent(Agent):
             The action policy distribution given form the network
         """
         set_curr_state = copy(curr_state)
-        # ignore obstacle per scenario
-        if self.setting == 2 or self.setting == 6:
-            set_curr_state = list(map(lambda x : 'road' if x=='grass' else x, curr_state ))
-        if self.setting == 7:
-            set_curr_state = list(map(lambda x : 'road' if x=='stone' else x, curr_state ))
+        
 
         state_feature_vector  = Environment.state2features(set_curr_state, self.n_state_features)
         actions_logits = self.network(state_feature_vector)
         
         valid_action_logits = actions_logits      
         policy = torch.distributions.Categorical(logits=valid_action_logits)        
-        valid_action_probs = policy.probs
-        # Normalize log probs within reasonable interval
-        if (policy.probs < 1e-5).any():
-            valid_action_probs = valid_action_probs.clamp(1e-5,1-1e-5)
-            valid_action_probs = valid_action_probs/valid_action_probs.sum()
-        if len(curr_state) > 1:
-            if curr_state[1] == 'wall':
-                valid_action_probs = valid_action_probs[1:].clamp(1e-5,1-1e-5)
-                valid_action_probs = valid_action_probs/valid_action_probs.sum()
-                valid_action_probs = torch.squeeze(torch.stack([torch.tensor(0),valid_action_probs[0], valid_action_probs[1]]))
-            elif curr_state[3] == 'wall':
-                valid_action_probs = valid_action_probs[:2].clamp(1e-5,1-1e-5)
-                valid_action_probs = valid_action_probs/valid_action_probs.sum()
-                valid_action_probs = torch.squeeze(torch.stack([valid_action_probs[0], valid_action_probs[1], torch.tensor(0)]))
-            
-        valid_policy = torch.distributions.Categorical(probs=valid_action_probs)
-        action = valid_policy.sample().item()
-        if len(curr_state) > 1:
-            if curr_state[1] == 'wall':
-                assert action != 0
-            elif curr_state[3] == 'wall':
-                assert action != 2
+        # TODO: may need to renormalize
+        action = policy.sample().item()
+        
 
-        return action , valid_policy  
+        return action , policy  
+
 
 # needed to pickle human
 def dd_init():
@@ -334,6 +311,45 @@ class RandomDriverAgent(Agent):
                 
         action = random.choices(range(3), [1/3, 1/3, 1/3])[0]
         return action
+
+class ShortestPathAgent():
+    """An agent that always chooses the optimal action"""
+    def __init__(self, env: Environment, control_cost):        
+        self.env = env
+        self.control_cost = control_cost
+        self.p = np.zeros(shape=(self.env.width,self.env.height, 3, self.env.width,self.env.height)) 
+        for y in range(self.env.height):
+            for x in range(self.env.width):
+                for a in range(3):
+                    nxt_x,nxt_y = self.env.next_coords(x,y,a)
+                    self.p[x,y,a,nxt_x,nxt_y] = 1.
+
+        self.policy = self.val_itr()
+
+    def take_action(self, time, coords):
+        x,y = coords
+        return random.choices(range(3), self.policy[time][x][y])[0]
+    
+    def eval(self, n_try=1, plt_path=None):
+        total_cost = []
+        for i in range(n_try):
+            self.env.reset()
+            traj_cost = 0
+            time = 0
+            while True:
+                cur_coords = self.env.current_coord
+                action = self.take_action(time, cur_coords)
+                _, cost, finished = self.env.step(action)
+                if finished:
+                    break
+                traj_cost+=cost + self.control_cost
+                if plt_path is not None:
+                    plt_path.add_line(cur_coords, self.env.current_coord, 'red')
+            total_cost.append(traj_cost)
+        
+        return np.mean(total_cost)
+
+   
 
 
 class OptimalAgent():
