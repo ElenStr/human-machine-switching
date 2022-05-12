@@ -1,11 +1,17 @@
 from copyreg import pickle
 from  numpy import sqrt
-from environments.env import * 
+from environments.env import *
+from environments.taxi_env import MapEnv 
 from environments.utils_env import *
+import osmnx as ox
 
+final_graph_path = 'data/final_graph.osm'
 trips_dict_path = 'data/trips.pkl'
 with open(trips_dict_path, 'wb') as f:
     TRIPS = pickle.load(f)
+
+graph = ox.graph_from_xml(final_graph_path, simplify=False)
+ENV = MapEnv(graph)
 
 
 
