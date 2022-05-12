@@ -55,7 +55,7 @@ def get_angle(G, node_id_u, node_id_v):
 
 class MapEnv(Environment):
     def __init__(self, graph: networkx.classes.multidigraph.MultiDiGraph):
-        self.G = self._remove_dead_ends(graph)
+        self.G = graph
         self.MAX_OUT_DEGREE = max(list(map(lambda x: len(self.G.out_edges(x)), self.G.nodes)))
         
         #  Set reference node to distinuish between nodes
@@ -149,6 +149,7 @@ class MapEnv(Environment):
         # cost in Km
         return self.G.get_edge_data(edge[0], edge[1])[0]['length']/1000 + dist_from_target
 
+# No need to remove dead ends anymore
     def _remove_dead_ends(self, graph):
         done = False
         while not done: 
