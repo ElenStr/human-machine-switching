@@ -1,7 +1,10 @@
+from collections import defaultdict
 from definitions import ROOT_DIR
 from csv import reader as csv_reader
 import osmnx as ox
 from copy import deepcopy
+import itertools
+import pickle
 
 def get_lat_lon(graph, node_number):
     node_dict = graph.nodes[node_number]
@@ -206,3 +209,33 @@ def save_osm_graph(graph, file):
     ox.config(all_oneway=True, useful_tags_node=utn, useful_tags_way=utw)
 
     ox.save_graph_xml(graph, filepath=file)
+
+def save_dict_trips_start_end(trips_path, dict_path):
+    """Saves a dictionary in dict path with key=trip_id 
+    and value" = [start_node_id, finish_node_id]"""
+    trips_dict = defaultdict(list)
+
+    with open(trips_path, 'r') as f:
+        reader = csv_reader(f)
+        new_start = True
+        for i,row in enumerate(reader):
+            if i> 0:
+                # New starting node
+                if new_start:
+                    trip_id = int(float(row[4]))
+                    trips_dict[trip_id].append(int(row[0])) 
+                    new_start = False
+                # Reached finished node
+                if row[2] == 'True':
+                    trip_id = int(float(row[4]))
+                    trips_dict[trip_id].append(int(row[1]))
+                    new_start = True 
+    with open(dict_path, 'wb') as f:
+        pickle.dump(trips_dict, f, pickle.HIGHEST_PROTOCOL)
+
+    print(f"{len(trips_dict)} trips saved")
+
+
+def get_csv_line(path, line_number):
+    with open(path) as f:
+        return next(itertools.islice(csv_reader(f), line_number, None))

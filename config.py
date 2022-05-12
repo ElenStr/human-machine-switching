@@ -1,6 +1,27 @@
+from copyreg import pickle
 from  numpy import sqrt
 from environments.env import * 
 from environments.utils_env import *
+
+trips_dict_path = 'data/trips.pkl'
+with open(trips_dict_path, 'wb') as f:
+    TRIPS = pickle.load(f)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # Configure runs with different seeds
 

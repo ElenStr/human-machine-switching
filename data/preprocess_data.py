@@ -77,6 +77,7 @@ if __name__=='__main__':
     old_trips = './processed_trips.csv'
     final_trips_path='data/cleaned_up_trips.csv'
     graph_path = 'data/Porto_driving.osm'
+    trips_dict_path = 'data/trips.pkl'
     
     print('Reading graph')
     G = ox.graph_from_xml(graph_path)
@@ -95,15 +96,26 @@ if __name__=='__main__':
     tmp_path = trips_no_mfinish_no_missing_nodes  
     # TODO: works in our case, but make it work in the general case (new dead ends may appear every time)
     if has_dead_ends:
+        print(f"{get_cur_time_str()} Dead ends found...")
+
 
         write_valid_trips(final_trips_path,tmp_path,graph=tmp_graph, ref_graph=ref_G, valid_fn=trips_with_dead_ends)
+    
+        print(f"{get_cur_time_str()} Syncing graph to trips without dead ends...")
 
         final_graph, has_dead_ends = graph_from_trips(final_trips_path, tmp_graph, ref_G)
 
+        print(f"{get_cur_time_str()} Saving final graph")
         # LOAD WITH simplify=FALSE !!!!!
         save_osm_graph(final_graph, "./data/final_graph.osm")
         
-        print(has_dead_ends, final_graph.number_of_nodes(), final_graph.number_of_edges() )
+        
+        print(f"{get_cur_time_str()} Dead ends in final graph {has_dead_ends}\n \
+                Nodes: {final_graph.number_of_nodes()}, Edges: {final_graph.number_of_edges() }")
+
+        print(f"{get_cur_time_str()} Saving dict with key=trip_ids and value = (start_node, finish_node")
+        save_dict_trips_start_end(final_trips_path, trips_dict_path)
+        
        
 
 
