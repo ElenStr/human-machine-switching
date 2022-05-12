@@ -1,109 +1,74 @@
-from copyreg import pickle
+import pickle
 from  numpy import sqrt
 from environments.env import *
 from environments.taxi_env import MapEnv 
 from environments.utils_env import *
 import osmnx as ox
 
+# Load data
 final_graph_path = 'data/final_graph.osm'
 trips_dict_path = 'data/trips.pkl'
-with open(trips_dict_path, 'wb') as f:
+with open(trips_dict_path, 'rb') as f:
     TRIPS = pickle.load(f)
+data_size = len(TRIPS)
+# Environment 
 
 graph = ox.graph_from_xml(final_graph_path, simplify=False)
 ENV = MapEnv(graph)
+n_actions = ENV.MAX_OUT_DEGREE
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+# TODO: run with different random splits for train/test set 
 # Configure runs with different seeds
 
 seed_list = [87651234, 12367845, 12783645, 18453627, 37468124, 38294734,2938472,49264719, 58375625]
 # exepetiment will run (run_end - run_start) times
 run_start = 0
-run_end = 3
-
-
-# Environment 
-width = 3
-height = 20
-depth = height//3
-init_traffic_level = 'light'
-n_actions = 3
-
-env_generator = Environment()
-env_params = { 'width' : width, 'height':height, 'init_traffic_level': init_traffic_level, 'depth': depth}
-
-# Scenarios stand for different enviornment types (not the scenarios in paper)
-
-# other_snenarios = [lambda c,s,f: fn(c,s,f,obst) for fn in [two_lanes_obstcales, difficult_grid] for obst in ['car', 'grass']]
-scenarios = [lambda c,s,f: general_grid(c,s,f,env_generator),lambda c,s,f: general_grid(c,s,f,env_generator) ] #+other_snenarios  
-# scenarios = [lambda c,s,f: clean_grass(c,s,f,env_generator), lambda c,s,f: clean_car(c,s,f,env_generator)  ] #+other_snenarios  
-# scenarios = [lambda c,s,f: simple_grid(c,s,f,env_generator, 'grass'), lambda c,s,f: simple_grid(c,s,f,env_generator, 'car')  ] #+other_snenarios  
-
-scen_postfix = '_scGen' if len(scenarios) > 1 else ''
-def env_generator_fn(n_grids):
-    grids = []
-    n_grids_per_scenario = n_grids #// len(scenarios)
-    all_env_params = {'scenario_fn': scenarios[1], 'base_fn': scenarios[0], **env_params}
-    grids_sc = [env_generator.generate_grid_world(**all_env_params) for _ in range(n_grids_per_scenario)]
-    grids.extend(grids_sc)
-    random.shuffle(grids)
-    return grids
+run_end = 1
 
 # Setting and agent config
-setting = 2 # setting is the same as 'scenario' in paper. set 2 for I, 3 for II and 7 for III  
-agent = f'switch'# agent can be {auto, fxd, switch} == {machine, fixSwitch, triage}
-agent+=f'V{setting}{scen_postfix}' 
-method = 'off_on'
-actual_human = True
+# No nned for setting now
+# setting = 2 # setting is the same as 'scenario' in paper. set 2 for I, 3 for II and 7 for III  
+agent = f'auto'# agent can be {auto, fxd, switch} == {machine, fixSwitch, triage}
+# agent+=f'V{setting}{scen_postfix}' 
+method = 'off'
+# actual_human = True
 entropy_weight = 0.01
 
-# Number of episodes for off and online training
-n_traj = 60000 # number of grids in which human acts alone
-n_try = 1 # number of human trajectories per grid to be recorded
-n_episodes = 200000 if setting==7 else 100000  # online training episodes
+# Fraction of trips for off and online training
+offline_train_split = 0.3 # Train split for offline training
+online_train_split = 0.4  # Train split for online training
+n_try = 1 # Recorded trips per source destination pair
+
 
 # Human 
-estimation_noise = 0.0 #probablity picking at random
-p_ignore = 1.0 
-c_H = 1.0 if setting==7 else 0
+c_H = 0
 
 # Machine
 batch_size = 1
-if setting == 2:
-    obstacle_to_ignore = 'grass'
-elif setting == 7:
-    obstacle_to_ignore = 'stone'  
-else:
-    obstacle_to_ignore = ''  
-c_M = 1 if setting==3 else 0.0
+# if setting == 2:
+#     obstacle_to_ignore = 'grass'
+# elif setting == 7:
+#     obstacle_to_ignore = 'stone'  
+# else:
+#     obstacle_to_ignore = ''  
+c_M = 0
 lr = 1e-4
 
 # Switching Agent
 # epsilon schedule
 def eps_fn(timestep):
-    off_steps = n_traj*n_try if 'off' in method else 0
-    if timestep < off_steps*19//2 :
-        epsilon = 0.2
-    elif timestep < off_steps*19:
-        epsilon = 0.1
-    else:
-        scaled_time = (timestep - off_steps*19+1)//19000 + 1
-        epsilon = 0.1* 1 / sqrt(scaled_time)
+    # Try simplest schedule for now 
+    epsilon = 0.1
+
+    # off_steps = n_traj*n_try if 'off' in method else 0
+    # if timestep < off_steps*19//2 :
+    #     epsilon = 0.2
+    # elif timestep < off_steps*19:
+    #     epsilon = 0.1
+    # else:
+    #     scaled_time = (timestep - off_steps*19+1)//19000 + 1
+    #     epsilon = 0.1* 1 / sqrt(scaled_time)
     return epsilon
 
 epsilon = eps_fn 
@@ -111,8 +76,29 @@ epsilon = eps_fn
 
 
 # Saving and evaluation
-n_eval = 1000
-eval_freq = 1000
-save_freq = 5000//batch_size
+eval_split = 1 - offline_train_split - online_train_split # Test set size
+eval_freq = 5000
+save_freq = 25000//batch_size
 eval_tries = 1 #number of evaluation runs
+
+
+
+# Scenarios stand for different enviornment types (not the scenarios in paper)
+
+# other_snenarios = [lambda c,s,f: fn(c,s,f,obst) for fn in [two_lanes_obstcales, difficult_grid] for obst in ['car', 'grass']]
+# scenarios = [lambda c,s,f: general_grid(c,s,f,env_generator),lambda c,s,f: general_grid(c,s,f,env_generator) ] #+other_snenarios  
+# # scenarios = [lambda c,s,f: clean_grass(c,s,f,env_generator), lambda c,s,f: clean_car(c,s,f,env_generator)  ] #+other_snenarios  
+# # scenarios = [lambda c,s,f: simple_grid(c,s,f,env_generator, 'grass'), lambda c,s,f: simple_grid(c,s,f,env_generator, 'car')  ] #+other_snenarios  
+
+# scen_postfix = '_scGen' if len(scenarios) > 1 else ''
+# def env_generator_fn(n_grids):
+#     grids = []
+#     n_grids_per_scenario = n_grids #// len(scenarios)
+#     all_env_params = {'scenario_fn': scenarios[1], 'base_fn': scenarios[0], **env_params}
+#     grids_sc = [env_generator.generate_grid_world(**all_env_params) for _ in range(n_grids_per_scenario)]
+#     grids.extend(grids_sc)
+#     random.shuffle(grids)
+#     return grids
+
+
 
