@@ -116,6 +116,18 @@ class MapEnv(Environment):
         state+=self.neighbors_sorted
         return state
 
+    def next_human_step(self, trip_id):
+        """Returns the recorded human driver action and transition"""
+        for action, neighbor in enumerate(self.neighbors_sorted):
+            # TODO: make ['trips'] a set to save time here
+            if trip_id in self.G.nodes[neighbor]['trips']:
+                break
+        next_state, cost, finished = self.step(action)
+        return action, next_state, cost, finished
+
+
+
+
     def _set_curr_node_state_info(self, node_id):
         self.current_node = node_id
         self.distance_from_reference = get_distance(self.G, node_id, self.reference_node)
