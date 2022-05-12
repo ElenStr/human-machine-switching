@@ -148,7 +148,7 @@ class MapEnv(Environment):
 
 
         # Padding
-        padding_size = self.MAX_OUT_DEGREE - len(nbrs_angle_distance_dest)
+        padding_size = self.MAX_OUT_DEGREE - len(nbrs_angle_distance_dest_unsorted)
         if  padding_size :
             nbrs_angle_distance_dest_unsorted.extend([(self.current_angle_dest,self.current_distance_dest)]*padding_size)
             
