@@ -230,8 +230,11 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trip_id, n_try=1):
         costs_for_delta = []
         v_tplus1_inp = []
         v_t_inp = []
+        print(f"Getting source and destination for trip_id {trip_id}")
         start_node_id = TRIPS[trip_id][0]
         finish_node_id = TRIPS[trip_id][1]
+        print("Reseting env")
+
         # TODO: fix this nicely b = idx of element on batch now batch_size = 1
         b = 0
         ENV.reset(start_node_id,finish_node_id)

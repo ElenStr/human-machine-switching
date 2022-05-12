@@ -79,13 +79,17 @@ def train(algos, trajectories, on_line_set,
     algos_costs : list
         A dictionary containing the cost of  every algorithm in each episode
     """
-    algos_costs = defaultdict(lambda:[])
-    machine_picked_ratios = defaultdict(lambda:[])
-    machine_picked_ratios_tr = defaultdict(lambda:[])
+    print('Starting training')
+
+    algos_costs = defaultdict(list)
+    machine_picked_ratios = defaultdict(list)
+    machine_picked_ratios_tr = defaultdict(list)
+    print('Starting offline training')
     if trajectories:
         # ep_l = len(trajectories[0])
-        trajectories = np.asarray(trajectories, dtype=object)
+        # trajectories = np.asarray(trajectories)
         batched_trajectories = trajectories
+        print(trajectories[:6])
         # Trips have different lengths, we do not have batches as before
         # batched_trajectories = np.resize(trajectories, (len(trajectories)//batch_size, batch_size, ep_l, 5) )
 
@@ -97,6 +101,7 @@ def train(algos, trajectories, on_line_set,
                 
                 # machine_picked_tr = learn_off_policy(switching_agent, acting_agents, np.resize(np.hstack(traj_batch), (ep_l, batch_size, 5)))
                 # traj_batch is just the trip id
+                print(f"Starting episode: {ep}, trip id: {traj_batch}")
                 machine_picked_tr = learn_off_policy(switching_agent, acting_agents, traj_batch)
 
                 machine_picked_ratios_tr[algo].append(machine_picked_tr)
