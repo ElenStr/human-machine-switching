@@ -33,3 +33,5 @@ etc/jupyter/nbconfig/notebook.d/widgetsnbextension.json
 processed_trips.csv
 plots
 *.json
+data/no_mfin_no_mis_nodes.csv
+data/cleaned_up_trips.csv
