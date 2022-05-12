@@ -24,10 +24,12 @@ def save_agent_cost(name, actor, critic, costs, ratios, on_off):
 def evaluate(switching_agent, acting_agents, eval_set, n_try=10, online_ev=False, plt_path=None):
     eval_costs = []
     machine_picked_ratios = []
-    for grid in eval_set:
-        cost, machine_picked = learn_evaluate(switching_agent, acting_agents, [grid], is_learn=False, online_ev=online_ev, ret_trajectory=False, n_try=n_try)
+    for trip_id in eval_set:
+        cost, machine_picked = learn_evaluate(switching_agent, acting_agents, trip_id, is_learn=False, online_ev=online_ev, ret_trajectory=False, n_try=n_try)
         if plt_path is not None:
-            grid.plot_trajectory(switching_agent, acting_agents, plt_path)
+            # TODO: plot subgraph nicely
+            pass
+            # grid.plot_trajectory(switching_agent, acting_agents, plt_path)
         eval_costs.append(cost)
         machine_picked_ratios.append(machine_picked)
     
@@ -47,15 +49,15 @@ def train(algos, trajectories, on_line_set,
     algos: dict of 'algorithm_name' : (switching_agent, [human, machine])
         The switching agents and the acting agents to be trained
 
-    trajecotries: List of List of tuples 
-        The trajectories induced by the human acting alone, 
-        needed for the off-policy stage.
+    trajecotries: List of ints 
+        The trips induced by the human acting alone, 
+        for the off-policy stage.
 
-    on_line_set: list of Gridworld 
-        The list of gridworlds to be used in the online training
+    on_line_set: list of ints 
+        The trips to be used in the online training
     
     eval_set:
-        Evaluation set of environments to keep track on training progress
+        Evaluation set of trips to keep track on training progress
 
     eval_freq: int
         Agents' evaluation frequenncy
@@ -81,16 +83,22 @@ def train(algos, trajectories, on_line_set,
     machine_picked_ratios = defaultdict(lambda:[])
     machine_picked_ratios_tr = defaultdict(lambda:[])
     if trajectories:
-        ep_l = len(trajectories[0])
+        # ep_l = len(trajectories[0])
         trajectories = np.asarray(trajectories, dtype=object)
-        batched_trajectories = np.resize(trajectories, (len(trajectories)//batch_size, batch_size, ep_l, 5) )
+        batched_trajectories = trajectories
+        # Trips have different lengths, we do not have batches as before
+        # batched_trajectories = np.resize(trajectories, (len(trajectories)//batch_size, batch_size, ep_l, 5) )
+
         for ep,traj_batch in enumerate(batched_trajectories):
             ep+=1
             for algo, agents in algos.items():
                 switching_agent, acting_agents = agents
                 machine = acting_agents[1]
                 
-                machine_picked_tr = learn_off_policy(switching_agent, acting_agents, np.resize(np.hstack(traj_batch), (ep_l, batch_size, 5)))
+                # machine_picked_tr = learn_off_policy(switching_agent, acting_agents, np.resize(np.hstack(traj_batch), (ep_l, batch_size, 5)))
+                # traj_batch is just the trip id
+                machine_picked_tr = learn_off_policy(switching_agent, acting_agents, traj_batch)
+
                 machine_picked_ratios_tr[algo].append(machine_picked_tr)
                 # print log
                 if verbose and ep % eval_freq == 0 and (ep // eval_freq > 0):
@@ -112,14 +120,14 @@ def train(algos, trajectories, on_line_set,
         machine_picked_ratios = defaultdict(lambda:[])
         machine_picked_ratios_tr = defaultdict(lambda:[])
         batched_online_set = np.resize(on_line_set, (len(on_line_set)//batch_size, batch_size))        
-        for ep,grid_worlds in enumerate(batched_online_set):
+        for ep,trip in enumerate(batched_online_set):
             
             ep+=1
             for algo, agents in algos.items():
                 switching_agent, acting_agents = agents
                 machine = acting_agents[1]
 
-                _, machine_picked_tr = learn_evaluate(switching_agent, acting_agents, grid_worlds, batch_size=batch_size, is_learn=True)
+                _, machine_picked_tr = learn_evaluate(switching_agent, acting_agents, trip, batch_size=batch_size, is_learn=True)
                 machine_picked_ratios_tr[algo].append(machine_picked_tr)
                 # print log
                 if verbose and ep % eval_freq == 0 and (ep // eval_freq > 0):
