@@ -1,9 +1,12 @@
 """
 Implementation of the human and machine policies in the paper
 """
+from code import interact
 from copy import copy
 import random
 import numpy as np
+from environments.taxi_env import MapEnv, get_angle, get_distance
+import networkx as nx
 import math
 import torch
 from collections import defaultdict
@@ -114,6 +117,30 @@ class MachineDriverAgent(Agent):
         
 
         return action , policy  
+
+
+class ShortestPathAgent():
+    """An agent that always chooses the optimal action"""
+    def __init__(self, env: MapEnv):        
+        self.env = env
+        
+
+    def take_action(self, curr_state):
+        source = self.env.current_node
+        target = self.env.dest_node
+        shortest_path = nx.shortest_path(self.env.G, source=source, target=target, weight='length')
+        # get next node in shortest path, shortest_path[0] == source
+        next_node_id = shortest_path[1]
+        next_node_distance = get_distance(self.G, next_node_id, target)
+        next_node_angle = get_angle(self.env.G, next_node_id, target)
+
+        angle_idx = np.argwhere(next_node_angle == np.array(self.env.neighbors_sorted)[:,0]).flatten()
+        distance_idx = np.argwhere(next_node_distance == np.array(self.env.neighbors_sorted)[:,1]).flatten()
+
+        action =  np.intersect1d(angle_idx,distance_idx)[0]
+        return action
+    
+
 
 
 # needed to pickle human
@@ -312,42 +339,7 @@ class RandomDriverAgent(Agent):
         action = random.choices(range(3), [1/3, 1/3, 1/3])[0]
         return action
 
-class ShortestPathAgent():
-    """An agent that always chooses the optimal action"""
-    def __init__(self, env: Environment, control_cost):        
-        self.env = env
-        self.control_cost = control_cost
-        self.p = np.zeros(shape=(self.env.width,self.env.height, 3, self.env.width,self.env.height)) 
-        for y in range(self.env.height):
-            for x in range(self.env.width):
-                for a in range(3):
-                    nxt_x,nxt_y = self.env.next_coords(x,y,a)
-                    self.p[x,y,a,nxt_x,nxt_y] = 1.
 
-        self.policy = self.val_itr()
-
-    def take_action(self, time, coords):
-        x,y = coords
-        return random.choices(range(3), self.policy[time][x][y])[0]
-    
-    def eval(self, n_try=1, plt_path=None):
-        total_cost = []
-        for i in range(n_try):
-            self.env.reset()
-            traj_cost = 0
-            time = 0
-            while True:
-                cur_coords = self.env.current_coord
-                action = self.take_action(time, cur_coords)
-                _, cost, finished = self.env.step(action)
-                if finished:
-                    break
-                traj_cost+=cost + self.control_cost
-                if plt_path is not None:
-                    plt_path.add_line(cur_coords, self.env.current_coord, 'red')
-            total_cost.append(traj_cost)
-        
-        return np.mean(total_cost)
 
    
 

@@ -32,13 +32,15 @@ class FixedSwitchingMachine(Agent):
     def __init__(self, n_state_features, optimizer, c_M, batch_size=1):
         """Initialize network and hyperparameters"""
         super(FixedSwitchingMachine, self).__init__()
-        self.network = CriticNet(n_state_features[1]+2, c_M)
-        self.target_network = CriticNet(n_state_features[1]+2, c_M)
+        # Critic need two extra features for the agent 
+        self.network = CriticNet(n_state_features+2, c_M)
+        self.target_network = CriticNet(n_state_features+2, c_M)
+
         self.target_network.load_state_dict(self.network.state_dict())
         self.target_update_freq = 5000
         self.timesteps = 0
         self.optimizer = optimizer(self.network.parameters())
-        self.n_state_features = n_state_features[0]
+        self.n_state_features = n_state_features
         self.F_t= np.zeros(batch_size)        
         self.var_rho = np.ones(batch_size)
         self.trainable = True
@@ -83,10 +85,10 @@ class SwitchingAgent(Agent):
     def __init__(self, n_state_features, optimizer, c_M, c_H, eps_fn, batch_size=1):
         """Initialize network and hyperparameters"""
         super(SwitchingAgent, self).__init__()
-        # TODO: change  n_state_features+1 for 1-hot encoding  
-        self.network = OptionCriticNet(n_state_features[1]+2,c_M,c_H)
+       
+        self.network = OptionCriticNet(n_state_features+2,c_M,c_H)
         self.optimizer = optimizer(self.network.parameters())        
-        self.target_network = OptionCriticNet(n_state_features[1]+2, c_M,c_H)
+        self.target_network = OptionCriticNet(n_state_features+2, c_M,c_H)
         self.target_network.load_state_dict(self.network.state_dict())
         self.target_update_freq = 5000
         self.timesteps = 0
@@ -95,7 +97,7 @@ class SwitchingAgent(Agent):
         self.F_t= np.zeros(batch_size)
         self.var_rho = np.ones(batch_size)
         self.trainable = True
-        self.n_state_features = n_state_features[0]
+        self.n_state_features = n_state_features
 
 
     def update_obs(self, *args):
@@ -144,15 +146,3 @@ class SwitchingAgent(Agent):
             switch = random.choices([0, 1], [.5, .5])[0]
         return switch 
 
-
-class SwitchHardFixed(Agent):
-    """Hard coded switching to human whever there is grass"""
-    def __init__(self):
-        super(SwitchHardFixed, self).__init__()
-        self.trainable = False
-        
-    def take_action(self, state, train, online, use_target=False):
-        if 'grass' in state:
-            return 0
-        else:
-            return 1
