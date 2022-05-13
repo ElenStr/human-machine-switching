@@ -220,11 +220,11 @@ class MapEnv(Environment):
         areas = defaultdict(list)
         trip_areas = {}
 
-        sectors = 1000
+        sectors = 60
         total_trips = len(trips_dict)
         step = total_trips // sectors
         area_idx = -1
-        area_idys = list(range(500,7000,500))
+        area_idys = list(range(500,8000,500))
         for angle_idx in range(0,total_trips,  step):
             area_idx+=1
             trips_ids_dist_from_ref_sorted = sorted(trips_ids_angle_from_ref_sorted[angle_idx:(angle_idx+step)], key=lambda x:x[1])
@@ -233,6 +233,7 @@ class MapEnv(Environment):
                     if dist < area_idy:
                         areas[(area_idx,area_idy)].append(trip_id)
                         trip_areas[trip_id] = (area_idx,area_idy)
+                        break
         
         return areas, trip_areas
         # plt.plot(angles)
@@ -240,13 +241,7 @@ class MapEnv(Environment):
 
     @staticmethod
     def state2features(state,n_features, obstacle_to_ignore=''):
-        print(state)
-        try:
-            feat =  np.array(state).flatten()
-        except Exception as e:
-            print(e)
-
-        print(feat)
+        feat =  np.array(state).flatten()
         return feat
 
 # class FeatureHandler:
