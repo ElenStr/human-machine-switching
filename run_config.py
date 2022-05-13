@@ -2,8 +2,8 @@ from experiments.experiments import train, evaluate
 from experiments.utils import *
 from agent.agents import *
 from agent.switching_agents import *
-from environments.env import * 
-from definitions import ROOT_DIR
+# from environments.env import * 
+from definitions import ROOT_DIR, PYTHON_VERSION
 from config import *
 from sklearn.model_selection import train_test_split
 
@@ -13,7 +13,10 @@ import os
 import numpy as np
 import random 
 import torch
-import pickle
+if PYTHON_VERSION < 9:
+    import pickle5 as pickle
+else:
+    import pickle
 import sys
 from copy import deepcopy
 
@@ -97,18 +100,18 @@ for run in range(run_start,run_end):
     orig_err = sys.stderr
 
     print(len(offline_trips))
-    with open(f'{ROOT_DIR}/{dir_name}_err.out','w', buffering=1) as ferr:
-        with open(f'{ROOT_DIR}/{dir_name}.out','w', buffering=1) as f:
-            sys.stdout = f
-            sys.stderr = ferr
-            try:
-                algo, costs = train(algo, offline_trips, online_trips, test_trips, eval_freq, save_freq, batch_size=batch_size, eval_tries=eval_tries)
-                sys.stdout = orig_stdout
-            except Exception as e:
+    # with open(f'{ROOT_DIR}/{dir_name}_err.out','w', buffering=1) as ferr:
+    #     with open(f'{ROOT_DIR}/{dir_name}.out','w', buffering=1) as f:
+    #         sys.stdout = f
+    #         sys.stderr = ferr
+            # try:
+    algo, costs = train(algo, offline_trips, online_trips, test_trips, eval_freq, save_freq, batch_size=batch_size, eval_tries=eval_tries)
+        #         sys.stdout = orig_stdout
+        #     except Exception as e:
                 
-                sys.stdout = orig_stdout
-                sys.stderr = orig_err   
-                print(e)     
+        #         sys.stdout = orig_stdout
+        #         sys.stderr = orig_err   
+        #         print(e)     
                 
-        sys.stderr = orig_err
+        # sys.stderr = orig_err
 
