@@ -4,7 +4,7 @@ import sys
 
 from agent.agents import Agent
 from agent.switching_agents import FixedSwitchingHuman, FixedSwitchingMachine
-from environments.env import Environment
+from environments.taxi_env import MapEnv
 from environments.utils_env import *
 from config import TRIPS, ENV
 
@@ -240,29 +240,36 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trip_id, n_try=1):
         ENV.reset(start_node_id,finish_node_id)
         finished = False
         while not finished : 
+            print("Getting current state")
             current_state = ENV.current_state()
+            print("Getting next human step")
             action, next_state, cost,  finished = ENV.next_human_step(trip_id)
+            print("Switch action")
             d_t = switching_agent.take_action(current_state, train=True)
             machine_picked.append(d_t)
             option = acting_agents[d_t]          
                         
             c_tplus1 = cost + option.control_cost
-            
+            print("starting updates", switching_agent.trainable)
             if switching_agent.trainable:
-                next_features = Environment.state2features(next_state, switching_agent.n_state_features) 
+                print(next_state)
+                next_features = MapEnv.state2features(next_state, switching_agent.n_state_features) 
+                print(next_features)
                 with torch.no_grad():
                     d_tplus1 = switching_agent.take_action(next_state, train=True, use_target=True)
+                    print(d_tplus1)
                     if switching_agent.network.needs_agent_feature :                        
-                        next_features = [*next_features, *Environment.agent_feature2net_input(d_tplus1)]
+                        next_features = [*next_features, *MapEnv.agent_feature2net_input(d_tplus1)]
                     v_tplus1 = switching_agent.target_network(next_features)
 
-                features = Environment.state2features(current_state, switching_agent.n_state_features)
+                features = MapEnv.state2features(current_state, switching_agent.n_state_features)
                 if switching_agent.network.needs_agent_feature :
-                    features = [*features, *Environment.agent_feature2net_input(d_t)]
+                    features = [*features, *MapEnv.agent_feature2net_input(d_t)]
                 v_t = switching_agent.network(features)
                 
                 td_error = c_tplus1 + v_tplus1 - v_t
                 # behavior policy
+                print("Need for human policy")
                 mu_t = acting_agents[0].get_policy(current_state, action, next_state)
                 # target policy
                 policy = acting_agents[1].take_action(current_state)[1]
@@ -292,10 +299,12 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trip_id, n_try=1):
                                     
                 critic_emphatic_weightings.append(emphatic_weighting)
                 td_errors.append(td_error)
+            print(acting_agents[1].trainable)
                 
             if acting_agents[1].trainable:      
                 acting_agents[1].M_t[b] = d_t + var_rho_prev*acting_agents[1].M_t[b]
                 emphatic_weighting = rho * acting_agents[1].M_t[b]
+                print("Emphatic done")
                 if not emphatic_weighting:
                     print('actor emphatic ',rho, var_rho_prev, acting_agents[1].M_t[b] )
                 
@@ -344,7 +353,7 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trip_id, n_try=1):
                     if not torch.all(list(acting_agents[1].network.parameters())[-1].grad < 1e3):
                         print('actor grad > 1e3', file=sys.stderr)
                         print(rho, var_rho_prev, acting_agents[1].M_t[0],actor_emphatic_weightings, deltas, log_pis, entropies, current_state, d_t, action, policy.probs)
-
+            print('Episode end')
     return np.mean(machine_picked)
           
  
