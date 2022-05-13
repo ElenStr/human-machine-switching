@@ -1,7 +1,7 @@
 import torch 
 import numpy as np
 import sys
-
+from copy import deepcopy
 from agent.agents import Agent
 from agent.switching_agents import FixedSwitchingHuman, FixedSwitchingMachine
 from environments.taxi_env import MapEnv
@@ -85,7 +85,7 @@ def learn_evaluate(switching_agent: Agent, acting_agents, trip_id ,is_learn: boo
             v_t_inp = []
             d_ts = []
 
-            current_state = ENV.current_state()
+            current_state = deepcopy(ENV.current_state())
             
 
             d_t = switching_agent.take_action(current_state, train=is_learn, online=online_ev)
@@ -113,16 +113,16 @@ def learn_evaluate(switching_agent: Agent, acting_agents, trip_id ,is_learn: boo
             
             if is_learn:
                 if switching_agent.trainable:                       
-                    next_features = Environment.state2features(next_state, switching_agent.n_state_features) 
+                    next_features = MapEnv.state2features(next_state, switching_agent.n_state_features) 
                     with torch.no_grad():
                         d_tplus1 = switching_agent.take_action(next_state,train=is_learn, use_target=True)
                         if switching_agent.network.needs_agent_feature :
-                            next_features = [*next_features, *Environment.agent_feature2net_input(d_tplus1)]
+                            next_features = [*next_features, *MapEnv.agent_feature2net_input(d_tplus1)]
                         v_tplus1 = switching_agent.target_network(next_features)
 
-                    features = Environment.state2features(current_state, switching_agent.n_state_features)
+                    features = MapEnv.state2features(current_state, switching_agent.n_state_features)
                     if switching_agent.network.needs_agent_feature :
-                        features = [*features, *Environment.agent_feature2net_input(d_t)]
+                        features = [*features, *MapEnv.agent_feature2net_input(d_t)]
                     v_t = switching_agent.network(features)
                     
                     td_error = c_tplus1 + v_tplus1 - v_t
@@ -241,7 +241,8 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trip_id, n_try=1):
         finished = False
         while not finished : 
             print("Getting current state")
-            current_state = ENV.current_state()
+            current_state = deepcopy(ENV.current_state())
+
             print("Getting next human step")
             action, next_state, cost,  finished = ENV.next_human_step(trip_id)
             print("Switch action")
@@ -252,16 +253,15 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trip_id, n_try=1):
             c_tplus1 = cost + option.control_cost
             print("starting updates", switching_agent.trainable)
             if switching_agent.trainable:
-                print(next_state)
+
                 next_features = MapEnv.state2features(next_state, switching_agent.n_state_features) 
-                print(next_features)
                 with torch.no_grad():
                     d_tplus1 = switching_agent.take_action(next_state, train=True, use_target=True)
-                    print(d_tplus1)
                     if switching_agent.network.needs_agent_feature :                        
                         next_features = [*next_features, *MapEnv.agent_feature2net_input(d_tplus1)]
                     v_tplus1 = switching_agent.target_network(next_features)
 
+                assert all(current_state[i][0] <= current_state[i+1][0] for i in range(len(current_state) - 1))
                 features = MapEnv.state2features(current_state, switching_agent.n_state_features)
                 if switching_agent.network.needs_agent_feature :
                     features = [*features, *MapEnv.agent_feature2net_input(d_t)]

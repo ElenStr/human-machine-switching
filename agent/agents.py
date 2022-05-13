@@ -1,7 +1,6 @@
 """
 Implementation of the human and machine policies in the paper
 """
-from code import interact
 from copy import copy
 import random
 import numpy as np
@@ -10,7 +9,7 @@ import networkx as nx
 import math
 import torch
 from collections import defaultdict
-
+from config import TRIPS
 from environments.env import Environment, GridWorld
 from networks.networks import ActorNet
 
@@ -107,7 +106,7 @@ class MachineDriverAgent(Agent):
         set_curr_state = copy(curr_state)
         
 
-        state_feature_vector  = Environment.state2features(set_curr_state, self.n_state_features)
+        state_feature_vector  = MapEnv.state2features(set_curr_state, self.n_state_features)
         actions_logits = self.network(state_feature_vector)
         
         valid_action_logits = actions_logits      
@@ -140,6 +139,150 @@ class ShortestPathAgent():
         action =  np.intersect1d(angle_idx,distance_idx)[0]
         return action
     
+
+class HumanDriverAgent(Agent):
+    def __init__(self, env: MapEnv, c_H=0.0):
+        """
+        The taxi driver, which chooses the cell with the lowest perceived cost.
+
+        Parameters
+        ----------
+        env: Environment
+
+        c_H: int
+            Human control cost
+
+        """
+        super(HumanDriverAgent, self).__init__()
+        self.control_cost = c_H
+        self.trainable = False
+        self.create_areas(env)
+
+        # self.areas_trips_counts = np.zeros()
+        
+
+    
+        
+            
+    def get_policy_approximation(self, state, action, grid_id):
+        """ The approximated action policy distribution given the state """
+        human_obs = tuple(state)
+        total_state_visit = sum(self.policy_approximation[grid_id,human_obs])
+        p_human_a_s = self.policy_approximation[grid_id,human_obs][action] / total_state_visit
+        return p_human_a_s
+    
+    def get_actual_policy(self, state, next_state):
+        """The true human policy distribution"""
+        greedy_cell = min(state[1:4], key=lambda x: self.type_costs[x])
+        next_cell = next_state[0]
+        is_greedy =   next_cell == greedy_cell        
+        n_cell = 2 if 'wall' in state[1:4] else 3
+        n_opt =  sum(1 for cell in state[1:4] if cell == greedy_cell) 
+        if self.setting == 1:
+            if is_greedy:
+                return (1 - self.prob_wrong)/n_opt + self.prob_wrong/n_cell
+            else:
+                return self.prob_wrong/n_cell
+        elif self.setting <7:
+            n_road = sum(1 for cell in state[1:4] if cell == 'road')
+            n_car = sum(1 for cell in state[1:4] if cell == 'car')
+            if is_greedy:
+                if next_cell == 'road':
+                    mu_a_s =  (1 - self.p_ignore_car)*(1 - self.prob_wrong)/n_road + self.p_ignore_car*(1 - self.prob_wrong)/(n_car + n_road) + self.prob_wrong/n_cell
+                    return mu_a_s
+                elif next_cell == 'car':
+                    return 1/n_car
+                else:
+                    if 'car' in state[1:4]:
+                        return (1 - self.p_ignore_car)*(1 - self.prob_wrong)/n_opt  + self.prob_wrong/n_cell
+                    else:
+                        return (1 - self.prob_wrong)/n_opt  + self.prob_wrong/n_cell
+            else:
+                if next_cell =='car':
+                    return self.p_ignore_car * (1 - self.prob_wrong)/(n_road +n_car) + self.prob_wrong/n_cell
+                else:
+                    return self.prob_wrong/n_cell
+        else:
+            n_road = sum(1 for cell in state[1:4] if cell == 'road')
+            n_grass = sum(1 for cell in state[1:4] if cell == 'grass')
+            if is_greedy:
+                if next_cell == 'road':
+                    mu_a_s =  (1 - self.p_ignore_grass)*(1 - self.prob_wrong)/n_road + self.p_ignore_grass*(1 - self.prob_wrong)/(n_grass + n_road) + self.prob_wrong/n_cell
+                    return mu_a_s
+                elif next_cell == 'grass':
+
+                    return 1/n_grass
+                else:
+                    if 'grass' in state[1:4]:
+
+                        return (1 - self.p_ignore_grass)*(1 - self.prob_wrong)/n_opt  + self.prob_wrong/n_cell
+                    else:
+
+                        return (1 - self.prob_wrong)/n_opt  + self.prob_wrong/n_cell
+            else:
+                if next_cell =='grass':
+
+                    return self.p_ignore_grass * (1 - self.prob_wrong)/(n_road +n_grass) + self.prob_wrong/n_cell
+                else:
+
+                    return self.prob_wrong/n_cell 
+                       
+
+    def get_policy(self, state, action, grid_id, next_state):
+        if self.actual:
+            return self.get_actual_policy(state, next_state)
+        else:
+            return self.get_policy_approximation(state, action, grid_id)
+
+
+
+    def take_action(self, curr_state, switch=False):
+        '''
+        current state in form of  ['road', 'no-car','car','road','car', ...]
+        human considers only next row, not the others
+        ''' 
+        
+        # if end of episode is reached
+        if len(curr_state) < 4:            
+            return random.randint(0,2)
+
+        p_choose = random.random()
+        p_ignore = random.random()
+        curr_state_for_human = copy(curr_state)
+        # ignore car when switching
+        if self.setting >= 4:
+            for i, cell_type in enumerate(curr_state[1:4]):                
+                if cell_type == 'car' and switch:                    
+                    curr_state_for_human[i+1] = 'road'
+        if self.setting<6:
+            for i, cell_type in enumerate(curr_state[1:4]):                
+                if cell_type == 'car' and p_ignore < self.p_ignore_car:                    
+                    curr_state_for_human[i+1] = 'road'
+        if self.setting ==7:
+            for i, cell_type in enumerate(curr_state[1:4]):                
+                if cell_type == 'grass' :                    
+                    curr_state_for_human[i+1] = 'road'
+
+        noisy_next_cell_costs = [self.type_costs[nxt_cell_type] for nxt_cell_type in curr_state_for_human[1:4]]
+
+        if p_choose < self.prob_wrong:
+            if curr_state[1] == 'wall':
+                action = random.choices(range(2), [1/2, 1/2])[0] + 1
+            elif curr_state[3] == 'wall':
+                action = random.choices(range(2), [1/2, 1/2])[0] 
+            else:
+                action = random.choices(range(3), [1/3, 1/3, 1/3])[0]
+            return action
+
+        min_estimated_cost = np.min(noisy_next_cell_costs) 
+        # ties are broken randomly
+        possible_actions = np.argwhere(noisy_next_cell_costs == min_estimated_cost).flatten()
+        n_possible_actions = possible_actions.size
+        action = random.choices(possible_actions, [1/n_possible_actions]*n_possible_actions)[0]
+
+        
+        return action
+      
 
 
 

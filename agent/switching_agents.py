@@ -9,7 +9,7 @@ import torch
 
 from agent.agents import  Agent
 from networks.networks import CriticNet, OptionCriticNet
-from environments.env import Environment
+from environments.taxi_env import MapEnv
 
 
 
@@ -134,7 +134,7 @@ class SwitchingAgent(Agent):
         """Return the switching decision (0 or 1) given the current state"""
         
         network = self.network if not use_target else self.target_network
-        state_feature_vector  = Environment.state2features(curr_state, self.n_state_features)
+        state_feature_vector  = MapEnv.state2features(curr_state, self.n_state_features)
         human_option_value = network(state_feature_vector + [0.,1.]).detach().item()
         machine_option_value = network(state_feature_vector + [1.,0.]).detach().item()
         p = random.random()
