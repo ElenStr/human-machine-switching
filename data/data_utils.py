@@ -152,7 +152,7 @@ def graph_from_trips(trips_path, tmp_graph, ref_graph):
 def add_trip_ids_to_nodes(processed_trip_path,graph):
     # initialize trip id lists
     for id in graph.nodes:
-        graph.nodes[id]['trips'] = []
+        graph.nodes[id]['trips'] = set()
 
     with open(processed_trip_path, 'r') as f:
         reader = csv_reader(f)
@@ -164,8 +164,8 @@ def add_trip_ids_to_nodes(processed_trip_path,graph):
                 v = int(row[1])
                 
                 try:                
-                    graph.nodes[u]['trips'].append(trip_id)
-                    graph.nodes[v]['trips'].append(trip_id)
+                    graph.nodes[u]['trips'].add(trip_id)
+                    graph.nodes[v]['trips'].add(trip_id)
                 except KeyError:
                     k+=1
         print(k,i)
@@ -238,3 +238,7 @@ def save_dict_trips_start_end(trips_path, dict_path):
 def get_csv_line(path, line_number):
     with open(path) as f:
         return next(itertools.islice(csv_reader(f), line_number, None))
+
+
+
+
