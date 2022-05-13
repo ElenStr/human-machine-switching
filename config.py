@@ -4,17 +4,20 @@ from environments.env import *
 from environments.taxi_env import MapEnv 
 from environments.utils_env import *
 import osmnx as ox
+from data.preprocess_data import add_trip_ids_to_nodes
 
 # Load data
 final_graph_path = 'data/final_graph.osm'
 trips_dict_path = 'data/trips.pkl'
+final_trips_path = 'data/cleaned_up_trips.csv'
 with open(trips_dict_path, 'rb') as f:
     TRIPS = pickle.load(f)
 data_size = len(TRIPS)
 # Environment 
 
 graph = ox.graph_from_xml(final_graph_path, simplify=False)
-ENV = MapEnv(graph)
+gr = add_trip_ids_to_nodes(final_trips_path, graph)
+ENV = MapEnv(gr)
 n_actions = ENV.MAX_OUT_DEGREE
 
 
@@ -36,8 +39,8 @@ method = 'off'
 entropy_weight = 0.01
 
 # Fraction of trips for off and online training
-offline_train_split = 0.3 # Train split for offline training
-online_train_split = 0.4  # Train split for online training
+offline_train_split = 0.1 # Train split for offline training
+online_train_split = 0.7 - offline_train_split  # Train split for online training
 n_try = 1 # Recorded trips per source destination pair
 
 
