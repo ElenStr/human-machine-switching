@@ -1,5 +1,5 @@
+from collections import defaultdict
 from copy import deepcopy
-# from msilib.schema import Error
 from environments.env import Environment
 import networkx
 import numpy as np
@@ -205,9 +205,41 @@ class MapEnv(Environment):
                 graph.remove_node(id)
                 
 
+    def _define_areas(self, trips_dict):
+        distance_fn = lambda x: get_distance(self.G, x, self.reference_node)
+        angle_fn = lambda x: get_angle(self.G, x, self.reference_node)
+
+        trips_ids_angle_from_ref_unsorted = list(map(lambda k_v: [angle_fn(k_v[1][1]), distance_fn(k_v[1][1]), k_v[0]] , trips_dict.items()))
+        trips_ids_angle_from_ref_sorted = sorted(trips_ids_angle_from_ref_unsorted, key=lambda x:x[0])
+
+        # angles = list(map(lambda x: x[0], trips_ids_angle_from_ref_sorted))
+        # trips_ids_dist_ref_sorted = sorted(trips_ids_angle_from_ref_unsorted, key=lambda x:x[1])
+        
+        # distances = list(map(lambda x: x[1], trips_ids_dist_ref_sorted))
+    
+        areas = defaultdict(list)
+        trip_areas = {}
+
+        sectors = 1000
+        total_trips = len(trips_dict)
+        step = total_trips // sectors
+        area_idx = -1
+        area_idys = list(range(500,7000,500))
+        for angle_idx in range(0,total_trips,  step):
+            area_idx+=1
+            trips_ids_dist_from_ref_sorted = sorted(trips_ids_angle_from_ref_sorted[angle_idx:(angle_idx+step)], key=lambda x:x[1])
+            for _,dist,trip_id in trips_ids_dist_from_ref_sorted:
+                for area_idy in area_idys:
+                    if dist < area_idy:
+                        areas[(area_idx,area_idy)].append(trip_id)
+                        trip_areas[trip_id] = (area_idx,area_idy)
+        
+        return areas, trip_areas
+        # plt.plot(angles)
+        # return angles
 
     @staticmethod
-    def state2feature(state,n_features, obstacle_to_ignore=''):
+    def state2features(state,n_features, obstacle_to_ignore=''):
         print(state)
         try:
             feat =  np.array(state).flatten()
