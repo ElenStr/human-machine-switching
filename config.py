@@ -1,21 +1,27 @@
-import pickle
 from  numpy import sqrt
-from environments.env import *
+# from environments.env import *
 from environments.taxi_env import MapEnv 
 from environments.utils_env import *
 import osmnx as ox
 from data.preprocess_data import add_trip_ids_to_nodes
+from definitions import PYTHON_VERSION
+if PYTHON_VERSION < 9:
+    import pickle5 as pickle
+else:
+    import pickle
 
 # Load data
 final_graph_path = 'data/final_graph.osm'
 trips_dict_path = 'data/trips.pkl'
 final_trips_path = 'data/cleaned_up_trips.csv'
+print("Loading trips")
 with open(trips_dict_path, 'rb') as f:
     TRIPS = pickle.load(f)
 data_size = len(TRIPS)
 # Environment 
-
+print("Loading graph")
 graph = ox.graph_from_xml(final_graph_path, simplify=False)
+print("Adding trips to nodes")
 gr = add_trip_ids_to_nodes(final_trips_path, graph)
 ENV = MapEnv(gr)
 n_actions = ENV.MAX_OUT_DEGREE
