@@ -99,7 +99,7 @@ def graph_from_trips(trips_path, tmp_graph, ref_graph):
        The final graph contains only nodes that are in the trips"""
     graph = deepcopy(tmp_graph)
     for node in graph.nodes():
-        graph.nodes[node]['trips'] = set()
+        graph.nodes[node]['trips'] = []
 
     with open(trips_path, 'r') as f:
         reader = csv_reader(f)
@@ -112,12 +112,12 @@ def graph_from_trips(trips_path, tmp_graph, ref_graph):
                 for node in [u,v]:
                     try:                
                         graph.nodes[node]
-                        graph.nodes[node]['trips'].add(trip_id)
+                        graph.nodes[node]['trips'].append(trip_id)
                     except KeyError:
                         try:
                             ref_graph.nodes[node]
                             graph.add_node(node)
-                            graph.nodes[node]['trips'] = {trip_id}
+                            graph.nodes[node]['trips'] = [trip_id]
 
                             for key,val in ref_graph.nodes[node].items():
                                 graph.nodes[node][key] = val
@@ -152,7 +152,7 @@ def graph_from_trips(trips_path, tmp_graph, ref_graph):
 def add_trip_ids_to_nodes(processed_trip_path,graph):
     # initialize trip id lists
     for id in graph.nodes:
-        graph.nodes[id]['trips'] = set()
+        graph.nodes[id]['trips'] = []
 
     with open(processed_trip_path, 'r') as f:
         reader = csv_reader(f)
@@ -164,8 +164,8 @@ def add_trip_ids_to_nodes(processed_trip_path,graph):
                 v = int(row[1])
                 
                 try:                
-                    graph.nodes[u]['trips'].add(trip_id)
-                    graph.nodes[v]['trips'].add(trip_id)
+                    graph.nodes[u]['trips'].append(trip_id)
+                    graph.nodes[v]['trips'].append(trip_id)
                 except KeyError:
                     k+=1
         print(k,i)
@@ -182,12 +182,12 @@ def trips_with_dead_ends(trips_path, valid_graph, ref_graph):
             # find sink nodes 
             if graph.out_degree(id) == 0:
                 dead_ends.append(id)
-                trips_with_dead_ends.extend(list(graph.nodes[id]['trips']))
+                trips_with_dead_ends.extend(graph.nodes[id]['trips'])
                 # remove parent of sink that will also become sink
                 for pred in graph.predecessors(id):
                     if graph.out_degree(pred) == 1:
                         dead_ends.append(pred)
-                        trips_with_dead_ends.extend(list(graph.nodes[pred]['trips']))
+                        trips_with_dead_ends.extend(graph.nodes[pred]['trips'])
 
         if not len(dead_ends):
             done = True
