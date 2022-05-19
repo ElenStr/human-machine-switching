@@ -21,9 +21,9 @@ class Network(nn.Module):
         """ features is the featurized input vector"""         
         input = as_tensor(features, dtype=torch.float)
         x = self.inp_layer(input) 
-        x = torch.tanh(x)
-        x = self.fc_layer(x)
-        output = activation(x)
+        x1 = torch.tanh(x)
+        x2 = self.fc_layer(x1)
+        output = activation(x2)
         return  output
     
     

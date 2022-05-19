@@ -23,7 +23,7 @@ print("Loading graph")
 graph = ox.graph_from_xml(final_graph_path, simplify=False)
 print("Adding trips to nodes")
 gr = add_trip_ids_to_nodes(final_trips_path, graph)
-ENV = MapEnv(gr)
+ENV = MapEnv(gr, TRIPS)
 n_actions = ENV.MAX_OUT_DEGREE
 
 

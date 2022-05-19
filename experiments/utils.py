@@ -68,7 +68,7 @@ def learn_evaluate(switching_agent: Agent, acting_agents, trip_id ,is_learn: boo
         start_id = TRIPS[trip_id][0]
         finish_id = TRIPS[trip_id][1]
 
-        ENV.reset(start_id, finish_id)
+        ENV.reset(start_id, finish_id, trip_id)
 
         d_tminus1 = 0
         timestep = 0
@@ -93,7 +93,7 @@ def learn_evaluate(switching_agent: Agent, acting_agents, trip_id ,is_learn: boo
             option = acting_agents[d_t] 
             total_machine_picked.append(d_t)
             if not d_t:  
-                action = option.take_action(current_state, d_tminus1)
+                action = option.take_action()
             else:
                 action, policy = option.take_action(current_state)
                             
@@ -230,28 +230,31 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trip_id, n_try=1):
         costs_for_delta = []
         v_tplus1_inp = []
         v_t_inp = []
-        print(f"Getting source and destination for trip_id {trip_id}")
+        # print(f"Getting source and destination for trip_id {trip_id}")
         start_node_id = TRIPS[trip_id][0]
         finish_node_id = TRIPS[trip_id][1]
-        print("Reseting env")
+        # print("Reseting env")
 
         # TODO: fix this nicely b = idx of element on batch now batch_size = 1
         b = 0
-        ENV.reset(start_node_id,finish_node_id)
+        ENV.reset(start_node_id,finish_node_id, trip_id)
         finished = False
         while not finished : 
-            print("Getting current state")
+            # print("Getting current state")
             current_state = deepcopy(ENV.current_state())
+            
+            # Compute human policy before moving to next state
+            acting_agents[0].compute_policy()
 
-            print("Getting next human step")
+            # print("Getting next human step")
             action, next_state, cost,  finished = ENV.next_human_step(trip_id)
-            print("Switch action")
+            # print("Switch action")
             d_t = switching_agent.take_action(current_state, train=True)
             machine_picked.append(d_t)
             option = acting_agents[d_t]          
                         
             c_tplus1 = cost + option.control_cost
-            print("starting updates", switching_agent.trainable)
+            # print("starting updates", switching_agent.trainable)
             if switching_agent.trainable:
 
                 next_features = MapEnv.state2features(next_state, switching_agent.n_state_features) 
@@ -261,7 +264,6 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trip_id, n_try=1):
                         next_features = [*next_features, *MapEnv.agent_feature2net_input(d_tplus1)]
                     v_tplus1 = switching_agent.target_network(next_features)
 
-                assert all(current_state[i][0] <= current_state[i+1][0] for i in range(len(current_state) - 1))
                 features = MapEnv.state2features(current_state, switching_agent.n_state_features)
                 if switching_agent.network.needs_agent_feature :
                     features = [*features, *MapEnv.agent_feature2net_input(d_t)]
@@ -269,8 +271,8 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trip_id, n_try=1):
                 
                 td_error = c_tplus1 + v_tplus1 - v_t
                 # behavior policy
-                print("Need for human policy")
-                mu_t = acting_agents[0].get_policy(current_state, action, next_state)
+                # print("Need for human policy")
+                mu_t = acting_agents[0].get_policy(action)
                 # target policy
                 policy = acting_agents[1].take_action(current_state)[1]
                 with torch.no_grad():
@@ -287,7 +289,7 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trip_id, n_try=1):
                     var_pi_t = machine_pi_t if d_t else mu_t
                     switching_agent.var_rho[b] = var_pi_t / mu_t
 
-                emphatic_weighting  = switching_agent.var_rho[b] * switching_agent.F_t[b]                    
+                    emphatic_weighting  = switching_agent.var_rho[b] * switching_agent.F_t[b]                    
                 
                 if not td_error:
                     print("TD error")
@@ -299,7 +301,7 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trip_id, n_try=1):
                                     
                 critic_emphatic_weightings.append(emphatic_weighting)
                 td_errors.append(td_error)
-            print(acting_agents[1].trainable)
+            # print(acting_agents[1].trainable)
                 
             if acting_agents[1].trainable:      
                 acting_agents[1].M_t[b] = d_t + var_rho_prev*acting_agents[1].M_t[b]
@@ -317,10 +319,10 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trip_id, n_try=1):
                 entropies.append(policy.entropy().mean())
 
             if switching_agent.trainable and len(td_errors):
-                critic_emphatic_weightings = torch.as_tensor(critic_emphatic_weightings)                
-                td_errors = torch.stack(td_errors)
+                critic_emphatic_weightings_t = torch.as_tensor(critic_emphatic_weightings)                
+                td_errors_t = torch.stack(td_errors)
                 
-                switching_agent.update_policy(critic_emphatic_weightings, td_errors)
+                switching_agent.update_policy(critic_emphatic_weightings_t, td_errors_t)
 
                 if torch.is_tensor(list(switching_agent.network.parameters())[0].grad):
                     if not torch.any(list(switching_agent.network.parameters())[0].grad > 0.):
@@ -334,16 +336,16 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trip_id, n_try=1):
                     v_tplus1 = switching_agent.target_network(v_tplus1_inp)
                     v_t = switching_agent.network(v_t_inp)
                     
-                deltas = torch.as_tensor(costs_for_delta) + v_tplus1 - v_t
+                deltas_t = torch.as_tensor(costs_for_delta) + v_tplus1 - v_t
                                         
-                if not deltas.any():
+                if not deltas_t.any():
                     print('Deltas', file=sys.stderr) 
                     
-                actor_emphatic_weightings = torch.as_tensor(actor_emphatic_weightings)
-                log_pis = torch.stack(log_pis)
-                entropies = torch.stack(entropies)
+                actor_emphatic_weightings_t = torch.as_tensor(actor_emphatic_weightings)
+                log_pis_t = torch.stack(log_pis)
+                entropies_t = torch.stack(entropies)
 
-                acting_agents[1].update_policy(actor_emphatic_weightings, deltas, log_pis, entropies, use_entropy=False)
+                acting_agents[1].update_policy(actor_emphatic_weightings_t, deltas_t, log_pis_t, entropies_t, use_entropy=False)
                 
                 if torch.is_tensor(list(acting_agents[1].network.parameters())[0].grad):
                     if not torch.any(list(acting_agents[1].network.parameters())[0].grad > 0.):
@@ -353,7 +355,7 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trip_id, n_try=1):
                     if not torch.all(list(acting_agents[1].network.parameters())[-1].grad < 1e3):
                         print('actor grad > 1e3', file=sys.stderr)
                         print(rho, var_rho_prev, acting_agents[1].M_t[0],actor_emphatic_weightings, deltas, log_pis, entropies, current_state, d_t, action, policy.probs)
-            print('Episode end')
+            # print('Episode end')
     return np.mean(machine_picked)
           
  

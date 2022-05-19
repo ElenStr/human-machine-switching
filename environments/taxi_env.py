@@ -63,7 +63,7 @@ def trips_list_to_set(graph):
 
 
 class MapEnv(Environment):
-    def __init__(self, graph: networkx.classes.multidigraph.MultiDiGraph):
+    def __init__(self, graph: networkx.classes.multidigraph.MultiDiGraph, trips):
         self.G = graph
         self.MAX_OUT_DEGREE = max(list(map(lambda x: len(self.G.out_edges(x)), self.G.nodes)))
         
@@ -78,13 +78,16 @@ class MapEnv(Environment):
         self.current_angle_dest = None
         self.neighbors = []
         self.neighbors_sorted_state = []
+        self._define_areas(trips)
 
         
 
-    def reset(self, id_start, id_end):
+    def reset(self, id_start, id_end, trip_id):
         """
         Reset the info to retrieve the state to the beginning of new trip 
         """
+        self.cur_area = self.trip_areas[trip_id]  
+        self.cur_trip = trip_id  
         self.dest_node = id_end
         self._set_curr_node_state_info(id_start)
         self._set_angle_distance_neighbors_sorted()
@@ -95,24 +98,28 @@ class MapEnv(Environment):
         """
         returns: state, cost, finished
         """
-        print(f"Action {action}")
+        # print(f"Action {action}")
         next_node = self.neighbors_sorted[action]
 
     
+        # print(self.current_node)
 
-        prev_curr_node = self.current_node
-        print("Set current node info")
+        prev_curr_node = deepcopy(self.current_node)
+        # print("Set current node info")
         self._set_curr_node_state_info(next_node)
-        print("Get next state")
+        # print("Get next state")
 
         state = self.current_state()
-        print("Getting cost")
+        # print("Getting cost")
+        # print((prev_curr_node, next_node, self.cur_trip))
+
         cost = self._find_edge_cost((prev_curr_node, next_node), state[1][1])
         
         # TODO check if there are dead-end nodes after cleaning up trips
         dead_end = not len(self.neighbors)
-        print("Set finish")
+        # print("Set finish")
         finished = (self.current_node == self.dest_node) or dead_end
+        
         
 
         return state, cost, finished
@@ -132,16 +139,16 @@ class MapEnv(Environment):
 
     def next_human_step(self, trip_id):
         """Returns the recorded human driver action and transition"""
-        print("Finding action taken")
+        # print("Finding action taken")
         for action, neighbor in enumerate(self.neighbors_sorted):
-            # TODO: make ['trips'] a set to save time here
-            print(neighbor, trip_id)
+            
+            # print(neighbor, trip_id)
             if trip_id in self.G.nodes[neighbor]['trips']:
-                print("Action found")
+                # print("Action found")
                 break
-        print("Taking step")
+        # print("Taking step")
         next_state, cost, finished = self.step(action)
-        print('Step done')
+        # print('Step done')
         return action, next_state, cost, finished
 
 
@@ -149,11 +156,11 @@ class MapEnv(Environment):
 
     def _set_curr_node_state_info(self, node_id):
         self.current_node = node_id
-        print(node_id)
+        # print(node_id)
         self.distance_from_reference = get_distance(self.G, node_id, self.reference_node)
-        print(f"Distance from reference: {self.distance_from_reference}")
+        # print(f"Distance from reference: {self.distance_from_reference}")
         self.angle_from_reference = get_angle(self.G, node_id, self.reference_node)
-        print(f"Angle from reference: {self.angle_from_reference}")
+        # print(f"Angle from reference: {self.angle_from_reference}")
 
         self.current_distance_dest = get_distance(self.G, self.current_node, self.dest_node)
         self.current_angle_dest = get_angle(self.G, self.current_node, self.dest_node)
@@ -183,8 +190,9 @@ class MapEnv(Environment):
     def _find_edge_cost(self, edge: tuple, dist_from_target):
         # if the neighbor is a deadend set an infinite distance to target
         dist_from_target += (self.G.out_degree(edge[1]) == 0)*1000
+        dist_to_next = self.G.get_edge_data(edge[0], edge[1])[0]['length']/1000 if edge[0] != edge[1] else 0
         # cost in Km
-        return self.G.get_edge_data(edge[0], edge[1])[0]['length']/1000 + dist_from_target
+        return dist_to_next + dist_from_target
 
 # No need to remove dead ends anymore
     def _remove_dead_ends(self, graph):
@@ -237,7 +245,10 @@ class MapEnv(Environment):
                         areas_counts[(area_idx,area_idy)]+=1
                         trip_areas[trip_id] = (area_idx,area_idy)
                         break
-        return  areas, areas_counts, trip_areas
+          
+        self.areas = areas
+        self.areas_counts = areas_counts
+        self.trip_areas = trip_areas
        
 
     @staticmethod

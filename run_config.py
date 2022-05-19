@@ -7,7 +7,6 @@ from definitions import ROOT_DIR, PYTHON_VERSION
 from config import *
 from sklearn.model_selection import train_test_split
 
-
 from torch.optim import RMSprop
 import os
 import numpy as np
@@ -20,12 +19,14 @@ else:
 import sys
 from copy import deepcopy
 
+torch.autograd.set_detect_anomaly(True)
 for run in range(run_start,run_end):
     
     cur_seed = seed_list[run]
     np.random.seed(cur_seed)
     random.seed(cur_seed)
     torch.manual_seed(cur_seed)
+
 
 
     dir_post_fix = ''
@@ -58,6 +59,9 @@ for run in range(run_start,run_end):
     
     print(f"Experiment results path created")
 
+    # Human agent
+    human = HumanTaxiAgent(ENV, c_H)
+    print(f"Human agent created")
     #  state size get coords in (angle, dist) for current-ref, current-dest and each neighbor-dest
     n_state_features = 4 + ENV.MAX_OUT_DEGREE*2
     optimizer_fn = lambda params: RMSprop(params, lr)

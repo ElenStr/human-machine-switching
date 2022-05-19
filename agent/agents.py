@@ -138,7 +138,54 @@ class ShortestPathAgent():
 
         action =  np.intersect1d(angle_idx,distance_idx)[0]
         return action
-    
+
+class HumanTaxiAgent(Agent):
+    def __init__(self, env: MapEnv, c_H=0):
+        super(HumanTaxiAgent, self).__init__()
+        
+        self.c_H = c_H
+        # Set current area before episoe starts
+        self.env = env
+
+    def compute_policy(self):
+        # Trips in area that pass from current node
+        trips_cur_node_in_cur_area = np.zeros(len(self.env.neighbors_sorted))
+        for i,n in enumerate(self.env.neighbors_sorted):
+            for trip in self.env.areas[self.env.cur_area]:
+                if trip in self.env.G.nodes[n]['trips']:
+                    trips_cur_node_in_cur_area[i]+=1
+        denom = (sum(trips_cur_node_in_cur_area)*self.env.areas_counts[self.env.cur_area])
+        if denom == 0:
+            print("0 denom", sum(trips_cur_node_in_cur_area),self.env.areas_counts[self.env.cur_area] )
+            raise Exception
+        self.policy = [ v/denom for v in trips_cur_node_in_cur_area]
+        # Keep neighbors before action is taken 
+        self.neighbors = self.env.neighbors_sorted
+
+    def get_policy(self, action):
+        return self.policy[action]
+
+    def take_action(self):
+        for i,n in enumerate(self.env.neighbors_sorted):
+            if self.env.cur_trip in self.env.G.nodes[n]['trips']:
+                return i
+        self.compute_policy()
+        neighbors_probs = []
+        for n in self.env.neighbors_sorted:
+            neighbors_probs.append(self.policy[n])
+        
+        action = random.choices(list(range(self.env.MAX_OUT_DEGREE)), neighbors_probs)[0]
+        return action
+                
+
+
+
+        
+
+
+
+
+
 
 class HumanDriverAgent(Agent):
     def __init__(self, env: MapEnv, c_H=0.0):
