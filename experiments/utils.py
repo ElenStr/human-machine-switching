@@ -221,15 +221,15 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trip_id, n_try=1):
     machine_picked = []
     for i in range(n_try):
         
-        critic_emphatic_weightings = []
-        td_errors = []
-        actor_emphatic_weightings = []
-        deltas = []
-        log_pis = []
-        entropies = []
-        costs_for_delta = []
-        v_tplus1_inp = []
-        v_t_inp = []
+        # critic_emphatic_weightings = []
+        # td_errors = []
+        # actor_emphatic_weightings = []
+        # deltas = []
+        # log_pis = []
+        # entropies = []
+        # costs_for_delta = []
+        # v_tplus1_inp = []
+        # v_t_inp = []
         # print(f"Getting source and destination for trip_id {trip_id}")
         start_node_id = TRIPS[trip_id][0]
         finish_node_id = TRIPS[trip_id][1]
@@ -299,30 +299,28 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trip_id, n_try=1):
                 if not emphatic_weighting:
                     print('critic emphatic', policy.probs,mu_t,  switching_agent.F_t[b], var_rho_prev)
                                     
-                critic_emphatic_weightings.append(emphatic_weighting)
-                td_errors.append(td_error)
+                critic_emphatic_weighting = emphatic_weighting
+                # td_errors.append(td_error)
             # print(acting_agents[1].trainable)
                 
             if acting_agents[1].trainable:      
                 acting_agents[1].M_t[b] = d_t + var_rho_prev*acting_agents[1].M_t[b]
                 emphatic_weighting = rho * acting_agents[1].M_t[b]
-                print("Emphatic done")
                 if not emphatic_weighting:
                     print('actor emphatic ',rho, var_rho_prev, acting_agents[1].M_t[b] )
                 
-                actor_emphatic_weightings.append(emphatic_weighting)
-                costs_for_delta.append(cost)
-                v_tplus1_inp.append(next_features)
-                v_t_inp.append(features)
+                actor_emphatic_weighting = emphatic_weighting
+                # costs_for_delta.append(cost)
+                # v_tplus1_inp.append(next_features)
+                # v_t_inp.append(features)
 
-                log_pis.append(torch.log(policy.probs[torch.as_tensor(action)]))
-                entropies.append(policy.entropy().mean())
+                log_pi = torch.log(policy.probs[torch.as_tensor(action)])
+                entropy = policy.entropy().mean()
 
-            if switching_agent.trainable and len(td_errors):
-                critic_emphatic_weightings_t = torch.as_tensor(critic_emphatic_weightings)                
-                td_errors_t = torch.stack(td_errors)
-                
-                switching_agent.update_policy(critic_emphatic_weightings_t, td_errors_t)
+            if switching_agent.trainable:#  and len(td_errors):
+                critic_emphatic_weighting_t = torch.as_tensor(critic_emphatic_weighting)                
+                td_error_t = torch.as_tensor(td_error)
+                switching_agent.update_policy(critic_emphatic_weighting_t, td_error_t)
 
                 if torch.is_tensor(list(switching_agent.network.parameters())[0].grad):
                     if not torch.any(list(switching_agent.network.parameters())[0].grad > 0.):
@@ -330,31 +328,31 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trip_id, n_try=1):
                         pass
                     if not torch.all(list(switching_agent.network.parameters())[-1].grad < 1e3):
                         print('critic grad > 1e3', file=sys.stderr)
-            if acting_agents[1].trainable and len(actor_emphatic_weightings):
+            if acting_agents[1].trainable:# and len(actor_emphatic_weighting):
             
                 with torch.no_grad():
-                    v_tplus1 = switching_agent.target_network(v_tplus1_inp)
-                    v_t = switching_agent.network(v_t_inp)
+                    v_tplus1 = switching_agent.target_network(next_features)
+                    v_t = switching_agent.network(features)
                     
-                deltas_t = torch.as_tensor(costs_for_delta) + v_tplus1 - v_t
+                delta_t = torch.as_tensor(cost) + v_tplus1 - v_t
                                         
-                if not deltas_t.any():
+                if not delta_t.any():
                     print('Deltas', file=sys.stderr) 
                     
-                actor_emphatic_weightings_t = torch.as_tensor(actor_emphatic_weightings)
-                log_pis_t = torch.stack(log_pis)
-                entropies_t = torch.stack(entropies)
+                actor_emphatic_weighting_t = torch.as_tensor(actor_emphatic_weighting)
+                log_pi_t = torch.as_tensor(log_pi)
+                entropy_t = torch.as_tensor(entropy)
 
-                acting_agents[1].update_policy(actor_emphatic_weightings_t, deltas_t, log_pis_t, entropies_t, use_entropy=False)
+                acting_agents[1].update_policy(actor_emphatic_weighting_t, delta_t, log_pi_t, entropy_t, use_entropy=False)
                 
                 if torch.is_tensor(list(acting_agents[1].network.parameters())[0].grad):
                     if not torch.any(list(acting_agents[1].network.parameters())[0].grad > 0.):
                         print('actor zero grad', file=sys.stderr)
-                        print(actor_emphatic_weightings,log_pis,deltas , file=sys.stderr)
+                        print(actor_emphatic_weighting,log_pi,delta_t.data , file=sys.stderr)
                         
                     if not torch.all(list(acting_agents[1].network.parameters())[-1].grad < 1e3):
                         print('actor grad > 1e3', file=sys.stderr)
-                        print(rho, var_rho_prev, acting_agents[1].M_t[0],actor_emphatic_weightings, deltas, log_pis, entropies, current_state, d_t, action, policy.probs)
+                        print(rho, var_rho_prev, acting_agents[1].M_t[0],actor_emphatic_weighting, delta_t.data, log_pi, entropy, current_state, d_t, action, policy.probs)
             # print('Episode end')
     return np.mean(machine_picked)
           
