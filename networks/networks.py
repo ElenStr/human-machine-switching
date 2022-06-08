@@ -4,8 +4,8 @@ from torch.nn import functional as F
 import numpy as np
 
 def initialize_layer(layer,w_scale=1.):
-    nn.init.normal_(layer.weight.data, std=1.)
-    nn.init.constant_(layer.bias.data, 0)
+    nn.init.uniform_(layer.weight.data)
+    # nn.init.constant_(layer.bias.data, 0)
     return layer
 
 class Network(nn.Module):
@@ -14,16 +14,23 @@ class Network(nn.Module):
         super(Network, self).__init__()
         hidden = int(2**(np.ceil(np.log2(dim_in)) + 1))
         self.input_dim = dim_in
+        self.batchnorm = nn.BatchNorm1d(dim_in, affine=False, track_running_stats=False)
         self.inp_layer = initialize_layer(nn.Linear(dim_in, hidden))
         self.fc_layer = initialize_layer(nn.Linear(hidden, dim_out))
 
     def forward(self, features, activation):
         """ features is the featurized input vector"""         
         input = as_tensor(features, dtype=torch.float)
-        x = self.inp_layer(input) 
-        x1 = torch.tanh(x)
-        x2 = self.fc_layer(x1)
-        output = activation(x2)
+        input = torch.squeeze(self.batchnorm(torch.unsqueeze(input,1)))
+        x = self.inp_layer(input)
+
+        # print(x) 
+
+        # x = F.relu(x)
+        x = self.fc_layer(x)
+        # print(x) 
+
+        output = activation(x)
         return  output
     
     
@@ -40,6 +47,7 @@ class ActorNet(Network):
         n_actions: int
             Number of actions
         """
+        print()
         super(ActorNet, self).__init__(n_features, n_actions)
         
          
