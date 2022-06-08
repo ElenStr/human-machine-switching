@@ -237,6 +237,7 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trip_id, n_try=1):
 
         # TODO: fix this nicely b = idx of element on batch now batch_size = 1
         b = 0
+        print(ENV.G)
         ENV.reset(start_node_id,finish_node_id, trip_id)
         finished = False
         while not finished : 
@@ -247,7 +248,8 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trip_id, n_try=1):
             acting_agents[0].compute_policy()
 
             # print("Getting next human step")
-            action, next_state, cost,  finished = ENV.next_human_step(trip_id)
+            action, next_state, cost, finished = ENV.next_human_step(trip_id)
+            print(f"human action: {ENV.current_node, ENV.dest_node}")
             # print("Switch action")
             d_t = switching_agent.take_action(current_state, train=True)
             machine_picked.append(d_t)
@@ -268,13 +270,14 @@ def learn_off_policy(switching_agent: Agent, acting_agents, trip_id, n_try=1):
                 if switching_agent.network.needs_agent_feature :
                     features = [*features, *MapEnv.agent_feature2net_input(d_t)]
                 v_t = switching_agent.network(features)
-                
                 td_error = c_tplus1 + v_tplus1 - v_t
+                # print(f"TD error: {td_error,c_tplus1, v_tplus1, v_t}")
                 # behavior policy
                 # print("Need for human policy")
                 mu_t = acting_agents[0].get_policy(action)
                 # target policy
                 policy = acting_agents[1].take_action(current_state)[1]
+                
                 with torch.no_grad():
 
                     var_rho_prev = switching_agent.var_rho[b]

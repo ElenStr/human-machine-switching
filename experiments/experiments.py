@@ -79,7 +79,7 @@ def train(algos, trajectories, on_line_set,
     algos_costs : list
         A dictionary containing the cost of  every algorithm in each episode
     """
-    print('Starting training')
+
 
     algos_costs = defaultdict(list)
     machine_picked_ratios = defaultdict(list)
