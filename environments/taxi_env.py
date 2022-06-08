@@ -69,7 +69,7 @@ class MapEnv(Environment):
         
         #  Set reference node to distinuish between nodes
         self.reference_node = 25632226
-
+        
         self.current_node = None
         self.distance_from_reference = None
         self.angle_from_reference = None
@@ -86,6 +86,7 @@ class MapEnv(Environment):
         """
         Reset the info to retrieve the state to the beginning of new trip 
         """
+        self.seen_nodes = set()
         self.cur_area = self.trip_areas[trip_id]  
         self.cur_trip = trip_id  
         self.dest_node = id_end
@@ -106,10 +107,13 @@ class MapEnv(Environment):
 
         prev_curr_node = deepcopy(self.current_node)
         # print("Set current node info")
+        print(self.current_node, next_node)
         self._set_curr_node_state_info(next_node)
         # print("Get next state")
 
         state = self.current_state()
+        print(self.current_node)
+
         # print("Getting cost")
         # print((prev_curr_node, next_node, self.cur_trip))
 
@@ -140,10 +144,12 @@ class MapEnv(Environment):
     def next_human_step(self, trip_id):
         """Returns the recorded human driver action and transition"""
         # print("Finding action taken")
-        for action, neighbor in enumerate(self.neighbors_sorted):
+        print(self.neighbors_sorted)
+        self.seen_nodes.add(self.current_node)
+        for action, neighbor in enumerate(self.neighbors):
             
             # print(neighbor, trip_id)
-            if trip_id in self.G.nodes[neighbor]['trips']:
+            if neighbor not in self.seen_nodes and trip_id in self.G.nodes[neighbor]['trips']:
                 # print("Action found")
                 break
         # print("Taking step")
@@ -253,7 +259,11 @@ class MapEnv(Environment):
 
     @staticmethod
     def state2features(state,n_features, obstacle_to_ignore=''):
+        
+        
+        
         feat =  np.array(state).flatten()
+
         return feat
 
 # class FeatureHandler:
