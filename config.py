@@ -1,7 +1,7 @@
 from  numpy import sqrt
 # from environments.env import *
 from environments.taxi_env import MapEnv 
-from environments.utils_env import *
+# from environments.utils_env import *
 import osmnx as ox
 from data.preprocess_data import add_trip_ids_to_nodes
 from definitions import PYTHON_VERSION
@@ -25,7 +25,6 @@ print("Adding trips to nodes")
 gr = add_trip_ids_to_nodes(final_trips_path, graph)
 ENV = MapEnv(gr, TRIPS)
 n_actions = ENV.MAX_OUT_DEGREE
-
 
 # TODO: run with different random splits for train/test set 
 # Configure runs with different seeds
@@ -62,7 +61,7 @@ batch_size = 1
 # else:
 #     obstacle_to_ignore = ''  
 c_M = 0
-lr = 1e-4
+lr = 1e-3
 
 # Switching Agent
 # epsilon schedule

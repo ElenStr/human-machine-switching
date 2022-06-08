@@ -7,7 +7,7 @@ from definitions import ROOT_DIR, PYTHON_VERSION
 from config import *
 from sklearn.model_selection import train_test_split
 
-from torch.optim import RMSprop
+from torch.optim import RMSprop,Adam
 import os
 import numpy as np
 import random 
@@ -64,7 +64,7 @@ for run in range(run_start,run_end):
     print(f"Human agent created")
     #  state size get coords in (angle, dist) for current-ref, current-dest and each neighbor-dest
     n_state_features = 4 + ENV.MAX_OUT_DEGREE*2
-    optimizer_fn = lambda params: RMSprop(params, lr)
+    optimizer_fn = lambda params: Adam(params, lr)
     machine = MachineDriverAgent(n_state_features, n_actions, optimizer_fn, c_M=c_M, entropy_weight=entropy_weight, batch_size=batch_size)
 
     print(f"Machine agent created")
@@ -104,18 +104,18 @@ for run in range(run_start,run_end):
     orig_err = sys.stderr
 
     print(len(offline_trips))
-    # with open(f'{ROOT_DIR}/{dir_name}_err.out','w', buffering=1) as ferr:
-    #     with open(f'{ROOT_DIR}/{dir_name}.out','w', buffering=1) as f:
-    #         sys.stdout = f
-    #         sys.stderr = ferr
-            # try:
-    algo, costs = train(algo, offline_trips, online_trips, test_trips, eval_freq, save_freq, batch_size=batch_size, eval_tries=eval_tries)
-        #         sys.stdout = orig_stdout
-        #     except Exception as e:
+    with open(f'{ROOT_DIR}/{dir_name}_err.out','w', buffering=1) as ferr:
+        with open(f'{ROOT_DIR}/{dir_name}.out','w', buffering=1) as f:
+            sys.stdout = f
+            sys.stderr = ferr
+            try:
+                algo, costs = train(algo, offline_trips, online_trips, test_trips, eval_freq, save_freq, batch_size=batch_size, eval_tries=eval_tries)
+                sys.stdout = orig_stdout
+            except Exception as e:
                 
-        #         sys.stdout = orig_stdout
-        #         sys.stderr = orig_err   
-        #         print(e)     
+                sys.stdout = orig_stdout
+                sys.stderr = orig_err   
+                print(e)     
                 
-        # sys.stderr = orig_err
+        sys.stderr = orig_err
 
