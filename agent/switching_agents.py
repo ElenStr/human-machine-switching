@@ -70,8 +70,9 @@ class FixedSwitchingMachine(Agent):
 
         self.optimizer.zero_grad()
         v_loss.backward()
-        nn.utils.clip_grad_norm_(self.network.parameters(), 1.)
+        # nn.utils.clip_grad_norm_(self.network.parameters(), 1.)
         self.optimizer.step()
+        # print(f"Step:{self.timesteps}")
 
 
     def take_action(self, curr_state, train, online=False, use_target=False):
